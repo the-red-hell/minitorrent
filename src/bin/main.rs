@@ -12,6 +12,7 @@ use critical_section::Mutex as CriticalMutex;
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
+// use embedded_sdmmc::FatVolume;
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Output, OutputConfig};
 use esp_hal::rtc_cntl::Rtc;
@@ -71,9 +72,9 @@ async fn main(spawner: Spawner) -> ! {
     let dma_tx_buf = esp_hal::dma::DmaTxBuf::new(tx_descriptors, tx_buffer).unwrap();
 
     // SPI
-    let mut spi_bus = Spi::new(
+    let spi_bus = Spi::new(
         peripherals.SPI2,
-        Config::default().with_frequency(Rate::from_khz(250)),
+        Config::default().with_frequency(Rate::from_khz(250)), //  max: 80MHz
     )
     .unwrap()
     .with_sck(peripherals.GPIO6)
@@ -83,9 +84,6 @@ async fn main(spawner: Spawner) -> ! {
     .with_buffers(dma_rx_buf, dma_tx_buf)
     .into_async();
 
-    let idk = spi_bus.write_async(&[0]).await;
-    dbg!(idk.unwrap());
-
     println!("spi bus initialized");
 
     let cs = Output::new(
@@ -93,11 +91,6 @@ async fn main(spawner: Spawner) -> ! {
         esp_hal::gpio::Level::High,
         OutputConfig::default(),
     );
-
-    // static SPI_BUS: StaticCell<Mutex<NoopRawMutex, SpiDmaBus<esp_hal::Async>>> = StaticCell::new();
-    // let spi_bus = SPI_BUS.init(Mutex::new(spi_bus));
-
-    // let spi = SpiDevice::new(spi_bus, cs);
 
     // SD
     critical_section::with(|cs| {
@@ -109,21 +102,21 @@ async fn main(spawner: Spawner) -> ! {
             panic!("should not be initialized");
         }
     });
+
     println!("RTC Clock initialized");
     let mut bus = Bus::new(SPI(spi_bus), cs, SystemClock);
-    let card = bus.init(Delay).await.unwrap();
+    let card = dbg!(bus.init(Delay).await).unwrap();
     println!("wrote to card");
-    let sd = SD::init(bus, card).await.unwrap();
+    let sd = SD::init(bus, card).await.inspect_err(|e| {
+        dbg!(e);
+    });
     println!("read csd");
-    println!("{}", sd.num_blocks().device_size());
-
-    // let sd_card = SdCard::new(spi, Delay::new());
+    println!("{}", sd.unwrap().num_blocks().device_size());
 
     loop {
         println!("Hello world!");
         Timer::after(Duration::from_secs(1)).await;
     }
-
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.0.0/examples/src/bin
 }
 
@@ -143,13 +136,14 @@ struct SPI<'a>(SpiDmaBus<'a, esp_hal::Async>);
 impl<'a> Transfer for SPI<'a> {
     type Error = esp_hal::spi::Error;
 
-    fn transfer(
-        &mut self,
-        tx: &[u8],
-        rx: &mut [u8],
-    ) -> impl Future<Output = Result<(), Self::Error>> {
-        println!("transferring some bytes: {} {}", tx.len(), rx.len());
-        self.0.transfer_async(rx, tx)
+    async fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), Self::Error> {
+        println!("transferring {:?}, receiving {:?}", tx, rx);
+        match (!tx.is_empty(), !rx.is_empty()) {
+            (true, true) => self.0.transfer_async(rx, tx).await,
+            (true, false) => self.0.read_async(rx).await,
+            (false, true) => self.0.write_async(tx).await,
+            _ => unreachable!(),
+        }
     }
 }
 
