@@ -6,13 +6,20 @@
     holding buffers for the duration of a data transfer."
 )]
 
-use core::cell::OnceCell;
+use core::cell::{OnceCell, RefCell};
 
 use critical_section::Mutex as CriticalMutex;
 use defmt::info;
+use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_time::{Duration, Timer};
+use embedded_hal::spi::SpiBus;
+use embedded_hal_async::delay::DelayNs;
+use embedded_hal_bus::spi::ExclusiveDevice;
+use embedded_sdmmc::SdCard;
 // use embedded_sdmmc::FatVolume;
+use embedded_io_async::{Read, Seek, Write};
 use esp_hal::clock::CpuClock;
 use esp_hal::gpio::{Output, OutputConfig};
 use esp_hal::rtc_cntl::Rtc;
@@ -72,7 +79,7 @@ async fn main(spawner: Spawner) -> ! {
     let dma_tx_buf = esp_hal::dma::DmaTxBuf::new(tx_descriptors, tx_buffer).unwrap();
 
     // SPI
-    let spi_bus = Spi::new(
+    let mut spi_bus = Spi::new(
         peripherals.SPI2,
         Config::default().with_frequency(Rate::from_khz(250)), //  max: 80MHz
     )
@@ -86,32 +93,110 @@ async fn main(spawner: Spawner) -> ! {
 
     println!("spi bus initialized");
 
-    let cs = Output::new(
+    let mut cs = Output::new(
         peripherals.GPIO10,
         esp_hal::gpio::Level::High,
         OutputConfig::default(),
     );
 
-    // SD
-    critical_section::with(|cs| {
-        if RTC_CLOCK
-            .borrow(cs)
-            .set(Rtc::new(peripherals.LPWR))
-            .is_err()
-        {
-            panic!("should not be initialized");
+    // Sd cards need to be clocked with a at least 74 cycles on their spi clock without the cs enabled,
+    // sd_init is a helper function that does this for us.
+    loop {
+        match sdspi::sd_init(&mut spi_bus, &mut cs).await {
+            Ok(_) => break,
+            Err(e) => {
+                println!("Sd init error: {:?}", e);
+                embassy_time::Timer::after_millis(10).await;
+            }
         }
-    });
+    }
 
-    println!("RTC Clock initialized");
-    let mut bus = Bus::new(SPI(spi_bus), cs, SystemClock);
-    let card = dbg!(bus.init(Delay).await).unwrap();
-    println!("wrote to card");
-    let sd = SD::init(bus, card).await.inspect_err(|e| {
-        dbg!(e);
-    });
-    println!("read csd");
-    println!("{}", sd.unwrap().num_blocks().device_size());
+    let spid = ExclusiveDevice::new(spi_bus, cs, embassy_time::Delay).unwrap();
+    let mut sd = sdspi::SdSpi::<_, _, aligned::A1>::new(spid, embassy_time::Delay);
+
+    loop {
+        // Initialize the card
+        if sd.init().await.is_ok() {
+            // Increase the speed up to the SD max of 25mhz
+            let _ = sd
+                .spi()
+                .bus_mut()
+                .apply_config(&Config::default().with_frequency(Rate::from_mhz(25)));
+            println!("Initialization complete!");
+
+            break;
+        }
+        println!("Failed to init card, retrying...");
+        embassy_time::Delay.delay_ns(5000u32).await;
+    }
+
+    let inner = block_device_adapters::BufStream::<_, 512>::new(sd);
+
+    // async {
+    let fs = embedded_fatfs::FileSystem::new(inner, embedded_fatfs::FsOptions::new())
+        .await
+        .unwrap();
+    {
+        let mut f = fs.root_dir().create_file("test.log").await.unwrap();
+        let hello = b"Hello world!";
+        println!("Writing to file...");
+        f.write_all(hello).await.unwrap();
+        f.flush().await.unwrap();
+
+        let mut buf = [0u8; 12];
+        f.rewind().await.unwrap();
+        f.read_exact(&mut buf[..]).await.unwrap();
+        println!(
+            "Read from file: {}",
+            core::str::from_utf8(&buf[..]).unwrap()
+        );
+    }
+    fs.unmount().await.unwrap();
+
+    // Ok::<(), embedded_fatfs::Error<BufStreamError<sdspi::Error>>>(())
+    // }
+    // .await
+    // .expect("Filesystem tests failed!");
+
+    loop {}
+
+    // // Using a CriticalSectionRawMutex and RefCell for the shared blocking SPI bus
+    // static SPI_BUS_INST: static_cell::StaticCell<
+    //     embassy_sync::blocking_mutex::Mutex<
+    //         CriticalSectionRawMutex,
+    //         core::cell::RefCell<Spi<esp_hal::Blocking>>,
+    //     >,
+    // > = static_cell::StaticCell::new();
+
+    // let spi_bus_shared_ref = SPI_BUS_INST.init(embassy_sync::blocking_mutex::Mutex::new(
+    //     core::cell::RefCell::new(spi_bus),
+    // ));
+    // let spi =
+    //     embassy_embedded_hal::shared_bus::blocking::spi::SpiDevice::new(spi_bus_shared_ref, cs);
+
+    // // SD
+    // critical_section::with(|cs| {
+    //     if RTC_CLOCK
+    //         .borrow(cs)
+    //         .set(Rtc::new(peripherals.LPWR))
+    //         .is_err()
+    //     {
+    //         panic!("should not be initialized");
+    //     }
+    // });
+
+    // let sd_card = SdCard::new(spi, esp_hal::delay::Delay::new());
+    // dbg!(sd_card.num_bytes());
+
+    // println!("RTC Clock initialized");
+    // let mut bus = Bus::new(spi_bus, cs, SystemClock);
+    // let card = dbg!(bus.init(Delay).await).unwrap();
+    // println!("wrote to card");
+    // let sd = SD::init(bus, card).await.inspect_err(|e| {
+    //     dbg!(e);
+    // });
+    // println!("read csd");
+    // println!("{}", sd.unwrap().num_blocks().device_size());
 
     loop {
         println!("Hello world!");
@@ -131,21 +216,21 @@ impl DelayTrait for Delay {
     }
 }
 
-struct SPI<'a>(SpiDmaBus<'a, esp_hal::Async>);
+// struct SPI<'a>(Spi<'a, esp_hal::Async>);
 
-impl<'a> Transfer for SPI<'a> {
-    type Error = esp_hal::spi::Error;
+// impl<'a> Transfer for SPI<'a> {
+//     type Error = esp_hal::spi::Error;
 
-    async fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), Self::Error> {
-        println!("transferring {:?}, receiving {:?}", tx, rx);
-        match (!tx.is_empty(), !rx.is_empty()) {
-            (true, true) => self.0.transfer_async(rx, tx).await,
-            (true, false) => self.0.read_async(rx).await,
-            (false, true) => self.0.write_async(tx).await,
-            _ => unreachable!(),
-        }
-    }
-}
+//     async fn transfer(&mut self, tx: &[u8], rx: &mut [u8]) -> Result<(), Self::Error> {
+//         println!("transferring {:?}, receiving {:?}", tx, rx);
+//         match (!tx.is_empty(), !rx.is_empty()) {
+//             (true, true) => SpiBus::transfer(&mut self.0, rx, tx),
+//             (true, false) => self.0.read(rx),
+//             (false, true) => self.0.write(tx).await,
+//             _ => unreachable!(),
+//         }
+//     }
+// }
 
 struct SystemClock;
 impl embedded_timers::clock::Clock for SystemClock {
