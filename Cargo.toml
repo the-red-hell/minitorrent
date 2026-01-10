@@ -30,7 +30,6 @@ embassy-net = { version = "0.7.1", features = [
   "udp",
 ] }
 embedded-io = { version = "0.7.1", features = ["defmt"] }
-embedded-io-async = { version = "0.6.0" }
 esp-alloc = { version = "0.9.0", features = ["defmt"] }
 panic-rtt-target = { version = "0.2.0", features = ["defmt"] }
 rtt-target = { version = "0.6.2", features = ["defmt"] }
@@ -62,13 +61,8 @@ smoltcp = { version = "0.12.0", default-features = false, features = [
 
 critical-section = "1.2.0"
 static_cell = "2.1.1"
-embedded-sdmmc = { version = "0.9.0" }
 embassy-embedded-hal = "0.5.0"
 embassy-sync = "0.7.2"
-async-embedded-sdmmc = { version = "0.3.1", features = [
-  "async",
-  "embedded-hal-async",
-] }
 embedded-timers = "0.4.0"
 esp-println = { version = "0.16.1", default-features = false, features = [
   "esp32c3",
@@ -77,14 +71,11 @@ esp-println = { version = "0.16.1", default-features = false, features = [
   "critical-section",
 ] }
 
-sdspi = { version = "0.1.0", path = "embedded-fatfs/sdspi" }
-aligned = "0.4.2"
-block-device-adapters = { version = "0.2.0", path = "embedded-fatfs/block-device-adapters" }
-embedded-fatfs = { version = "0.1.0", path = "embedded-fatfs/embedded-fatfs", default-features = false }
+embedded-sdmmc = { version = "0.9.0", default-features = false, features = [
+  "defmt-log",
+] }
+embedded-hal-bus = { version = "0.3.0", features = ["defmt-03"] }
 
-embedded-hal = "1.0.0"
-embedded-hal-async = "1.0.0"
-embedded-hal-bus = { version = "0.3.0", features = ["async"] }
 [profile.dev]
 # Rust debug is too slow.
 # For debug builds always builds with some optimization
