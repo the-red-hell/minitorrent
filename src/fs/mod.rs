@@ -54,3 +54,9 @@ impl FileSystem {
         f(&volume0)
     }
 }
+
+impl Default for FileSystem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
