@@ -68,7 +68,7 @@ async fn main(spawner: Spawner) -> ! {
         .await
         .unwrap();
 
-    let file = get_torrent().await;
+    let file = get_torrent().await.unwrap();
     defmt::warn!("WE GOT THE FILE WITH: {:?}", file.as_slice());
     // let volume_mgr = sdcard.to_volume_mgr();
     // let volume = volume_mgr.get_volume();
