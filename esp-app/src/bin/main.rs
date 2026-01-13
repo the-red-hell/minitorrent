@@ -13,13 +13,7 @@ use embassy_executor::Spawner;
 use esp_hal::clock::CpuClock;
 use esp_hal::rtc_cntl::Rtc;
 use esp_hal::timer::timg::TimerGroup;
-use minitorrent::fs::FileSystem;
-use minitorrent::fs::sd_card::FileSystemInitializer;
 use panic_rtt_target as _;
-
-use crate::get_torrents::get_torrent;
-
-mod get_torrents;
 
 extern crate alloc;
 
@@ -58,18 +52,18 @@ async fn main(spawner: Spawner) -> ! {
 
     // yo
 
-    let fs_init = FileSystemInitializer::new(
+    let fs_init = esp_app::fs::sd_card::FileSystemInitializer::new(
         peripherals.GPIO4,
         peripherals.GPIO5,
         peripherals.GPIO6,
         peripherals.GPIO7,
     );
-    let _fs = FileSystem::initialize(fs_init, peripherals.SPI2)
+    let _fs = esp_app::fs::FileSystem::initialize(fs_init, peripherals.SPI2)
         .await
         .unwrap();
 
-    let file = get_torrent().await.unwrap();
-    defmt::warn!("WE GOT THE FILE WITH: {:?}", file.as_slice());
+    // let file = get_torrent().await.unwrap();
+    // defmt::warn!("WE GOT THE FILE WITH: {:?}", file.as_slice());
     // let volume_mgr = sdcard.to_volume_mgr();
     // let volume = volume_mgr.get_volume();
     // let root_dir = volume.open_root_dir();
