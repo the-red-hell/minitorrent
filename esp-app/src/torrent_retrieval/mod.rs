@@ -2,11 +2,12 @@ use core::cell::OnceCell;
 
 use alloc::{string::ToString as _, vec, vec::Vec};
 use embedded_sdmmc::LfnBuffer;
-use minitorrent::fs::FileSystem;
+
+use crate::fs::FileSystem;
 
 /// Get's the first torrent file in the 'torrents' directory.
 /// Make sure to put the torrent file in the 'torrents' directory as well as have the directory in the root of the filesystem.
-pub(super) async fn get_torrent() -> Option<Vec<u8>> {
+async fn get_torrent_from_file() -> Option<Vec<u8>> {
     let fs = FileSystem::new();
     fs.with_volume(|v| {
         let root_dir = v.open_root_dir().expect("Root dir not found.");

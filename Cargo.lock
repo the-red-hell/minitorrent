@@ -656,6 +656,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "esp-app"
+version = "0.1.0"
+dependencies = [
+ "critical-section",
+ "defmt 1.0.1",
+ "embassy-embedded-hal",
+ "embassy-executor",
+ "embassy-net",
+ "embassy-sync 0.7.2",
+ "embassy-time",
+ "embedded-hal-bus",
+ "embedded-io 0.7.1",
+ "embedded-sdmmc",
+ "embedded-timers",
+ "esp-alloc",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-println",
+ "esp-radio",
+ "esp-rtos",
+ "panic-rtt-target",
+ "rtt-target",
+ "serde",
+ "smoltcp",
+ "static_cell",
+]
+
+[[package]]
 name = "esp-bootloader-esp-idf"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1205,34 +1233,6 @@ name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
-
-[[package]]
-name = "minitorrent"
-version = "0.1.0"
-dependencies = [
- "critical-section",
- "defmt 1.0.1",
- "embassy-embedded-hal",
- "embassy-executor",
- "embassy-net",
- "embassy-sync 0.7.2",
- "embassy-time",
- "embedded-hal-bus",
- "embedded-io 0.7.1",
- "embedded-sdmmc",
- "embedded-timers",
- "esp-alloc",
- "esp-bootloader-esp-idf",
- "esp-hal",
- "esp-println",
- "esp-radio",
- "esp-rtos",
- "panic-rtt-target",
- "rtt-target",
- "serde",
- "smoltcp",
- "static_cell",
-]
 
 [[package]]
 name = "nb"
