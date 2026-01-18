@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 use core::str;
 
 // 1. Simple Error Types
@@ -126,7 +126,7 @@ impl<'a> BencodeParser<'a> {
         }
     }
 
-    /// Helper to end a dict
+    /// Returns true if the next element is the end of a dict and consumes it.
     pub fn match_dict_end(&mut self) -> bool {
         if self.peek() == Some(b'e') {
             self.input = &self.input[1..];
@@ -134,6 +134,11 @@ impl<'a> BencodeParser<'a> {
         } else {
             false
         }
+    }
+
+    /// Drops the parser and returns the remaining bytes.
+    pub fn remaining(self) -> &'a [u8] {
+        &self.input
     }
 }
 
@@ -334,12 +339,14 @@ mod tests {
 
     #[test]
     fn test_skip_unknown_fields_in_dict() {
-        let mut parser = BencodeParser::new(b"d7:ignored4:datai99e");
+        let mut parser = BencodeParser::new(b"d7:ignoredi4ei99ee");
         parser.expect_dict_start().unwrap();
 
         // Skip first key-value pair
         parser.skip_any().unwrap(); // key
         parser.skip_any().unwrap(); // value
+
+        assert!(!parser.match_dict_end());
 
         // Parse the integer that follows
         assert_eq!(parser.parse_int().unwrap(), 99);
