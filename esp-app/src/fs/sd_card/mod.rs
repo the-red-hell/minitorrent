@@ -122,7 +122,7 @@ impl<'a> SdCard<'a> {
         Ok(SdCard(sdcard))
     }
 
-    pub(super) fn as_volume_mgr(self) -> VolumeMgr<'a> {
+    pub(super) fn to_volume_mgr(self) -> VolumeMgr<'a> {
         self.into()
     }
 }

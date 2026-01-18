@@ -17,7 +17,7 @@ pub(crate) async fn wifi_setup(
         .write(esp_radio::init().expect("Failed to initialize radio controller"));
 
     let (wifi_controller, interfaces) =
-        esp_radio::wifi::new(&esp_radio_ctrl, wifi_peripheral, Default::default())
+        esp_radio::wifi::new(esp_radio_ctrl, wifi_peripheral, Default::default())
             .expect("Failed to initialize Wi-Fi controller");
 
     let config = embassy_net::Config::dhcpv4(Default::default());
@@ -31,9 +31,7 @@ pub(crate) async fn wifi_setup(
     let (stack, runner) = embassy_net::new(
         interfaces.sta,
         config,
-        STACK_RESOURCES_CELL
-            .uninit()
-            .write(StackResources::<3>::new()),
+        STACK_RESOURCES_CELL.init(StackResources::<3>::new()),
         seed,
     );
     spawner.spawn(connection(wifi_controller)).ok();
