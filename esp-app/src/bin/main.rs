@@ -33,5 +33,6 @@ async fn main(spawner: Spawner) -> ! {
         .unwrap();
     info!("WE GOT THE FILE WITH: {:?}", file.as_slice());
 
+    #[allow(clippy::empty_loop)]
     loop {}
 }
