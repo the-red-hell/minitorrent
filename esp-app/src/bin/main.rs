@@ -9,10 +9,9 @@
 use core::cell::OnceCell;
 
 use critical_section::Mutex as CriticalMutex;
+use defmt::info;
 use embassy_executor::Spawner;
-use esp_hal::clock::CpuClock;
 use esp_hal::rtc_cntl::Rtc;
-use esp_hal::timer::timg::TimerGroup;
 use panic_rtt_target as _;
 
 extern crate alloc;
@@ -27,46 +26,12 @@ esp_bootloader_esp_idf::esp_app_desc!();
 async fn main(spawner: Spawner) -> ! {
     // generator version: 1.0.1
 
-    rtt_target::rtt_init_defmt!();
-    defmt::info!("hi");
+    esp_app::setup::setup(spawner).await;
 
-    let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
-    let peripherals = esp_hal::init(config);
-
-    esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 66320);
-
-    let timg0 = TimerGroup::new(peripherals.TIMG0);
-    let sw_interrupt =
-        esp_hal::interrupt::software::SoftwareInterruptControl::new(peripherals.SW_INTERRUPT);
-    esp_rtos::start(timg0.timer0, sw_interrupt.software_interrupt0);
-
-    defmt::info!("Embassy initialized!");
-
-    let radio_init = esp_radio::init().expect("Failed to initialize Wi-Fi/BLE controller");
-    let (mut _wifi_controller, _interfaces) =
-        esp_radio::wifi::new(&radio_init, peripherals.WIFI, Default::default())
-            .expect("Failed to initialize Wi-Fi controller");
-
-    // TODO: Spawn some tasks
-    let _ = spawner;
-
-    // yo
-
-    let fs_init = esp_app::fs::sd_card::FileSystemInitializer::new(
-        peripherals.GPIO4,
-        peripherals.GPIO5,
-        peripherals.GPIO6,
-        peripherals.GPIO7,
-    );
-    let _fs = esp_app::fs::FileSystem::initialize(fs_init, peripherals.SPI2)
+    let file = esp_app::torrent_retrieval::get_torrent_from_file()
         .await
         .unwrap();
-
-    // let file = get_torrent().await.unwrap();
-    // defmt::warn!("WE GOT THE FILE WITH: {:?}", file.as_slice());
-    // let volume_mgr = sdcard.to_volume_mgr();
-    // let volume = volume_mgr.get_volume();
-    // let root_dir = volume.open_root_dir();
+    info!("WE GOT THE FILE WITH: {:?}", file.as_slice());
 
     loop {}
 }
