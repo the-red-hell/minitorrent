@@ -31,7 +31,12 @@ async fn main(spawner: Spawner) -> ! {
     let file = esp_app::torrent_retrieval::get_torrent_from_file()
         .await
         .unwrap();
-    info!("WE GOT THE FILE WITH: {:?}", file.as_slice());
+    let file = file.as_slice();
+    info!("WE GOT THE FILE WITH: {:?}", file);
+
+    let torrent = core_logic::metainfo::MetaInfoFile::parse(file).unwrap();
+
+    info!("WE GOT THE TORRENT WITH: {:?}", torrent);
 
     #[allow(clippy::empty_loop)]
     loop {}

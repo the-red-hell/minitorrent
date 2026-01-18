@@ -1,12 +1,13 @@
 use bencode::{BencodeParser, Error, Result};
+use defmt::Format;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Format)]
 pub struct MetaInfoFile<'a> {
     pub announce: &'a str,
     pub info: Info<'a>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Format)]
 pub struct Info<'a> {
     pub piece_length: u32,
     pub name: &'a str,
@@ -70,7 +71,7 @@ impl<'a> Info<'a> {
 
             match key {
                 "pieces" => {
-                    let piece_chunks = p.parse_str()?.as_bytes().as_chunks::<20>();
+                    let piece_chunks = p.parse_str_bytes()?.as_chunks::<20>();
                     if !piece_chunks.1.is_empty() {
                         return Err(Error::InvalidSyntax);
                     }

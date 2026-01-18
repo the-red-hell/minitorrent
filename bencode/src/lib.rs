@@ -1,8 +1,10 @@
 #![cfg_attr(not(test), no_std)]
 use core::str;
 
+use defmt::Format;
+
 // 1. Simple Error Types
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Format)]
 pub enum Error {
     UnexpectedEof,
     InvalidSyntax,
@@ -60,8 +62,16 @@ impl<'a> BencodeParser<'a> {
         Ok(val)
     }
 
-    /// Consume a length-prefixed string: "4:spam" -> "spam"
+    /// Consume a length-prefixed byte string: "4:spam" -> "spam" and utf-8 decode it
     pub fn parse_str(&mut self) -> Result<&'a str> {
+        let s_bytes = self.parse_str_bytes()?;
+        let s = str::from_utf8(s_bytes).map_err(|_| Error::InvalidUtf8)?;
+
+        Ok(s)
+    }
+
+    /// Consume a length-prefixed byte string: "4:spam" -> "spam"
+    pub fn parse_str_bytes(&mut self) -> Result<&'a [u8]> {
         // Find the colon
         let colon_idx = self
             .input
@@ -83,10 +93,9 @@ impl<'a> BencodeParser<'a> {
 
         // Slice the string (Zero Copy!)
         let (s_bytes, remaining) = rest.split_at(len);
-        let s = str::from_utf8(s_bytes).map_err(|_| Error::InvalidUtf8)?;
-
         self.input = remaining;
-        Ok(s)
+
+        Ok(s_bytes)
     }
 
     /// Crucial: Skips the next element (int, string, list, or dict)
