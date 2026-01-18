@@ -138,7 +138,7 @@ impl<'a> BencodeParser<'a> {
 
     /// Drops the parser and returns the remaining bytes.
     pub fn remaining(self) -> &'a [u8] {
-        &self.input
+        self.input
     }
 }
 
