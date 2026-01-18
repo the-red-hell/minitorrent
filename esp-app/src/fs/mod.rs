@@ -2,7 +2,7 @@ use embassy_sync::once_lock::OnceLock;
 use esp_hal::{gpio, spi};
 
 use crate::fs::sd_card::{
-    FileSystemInitializer, SdCardError,
+    SPIInitializer, SdCardError,
     volume::{Volume, VolumeMgr},
 };
 
@@ -14,10 +14,13 @@ static VOLUME_MGR: OnceLock<VolumeMgr> = OnceLock::new();
 pub struct FileSystem;
 
 impl FileSystem {
-    pub async fn initialize<SPI, SCK, MISO, MOSI, CS>(
-        initializer: FileSystemInitializer<'static, SCK, MISO, MOSI, CS>,
+    /// Initializes the SD Card.
+    /// Creates a Volume Manager with this SD Card.
+    /// You can optain the FileSystem by calling `FileSystem::new()`.
+    pub async fn setup<SPI, SCK, MISO, MOSI, CS>(
+        initializer: SPIInitializer<'static, SCK, MISO, MOSI, CS>,
         spi: SPI,
-    ) -> Result<Self, SdCardError>
+    ) -> Result<(), SdCardError>
     where
         SPI: spi::master::Instance + 'static,
         SCK: gpio::interconnect::PeripheralOutput<'static>,
@@ -32,7 +35,7 @@ impl FileSystem {
             .map_err(|_| ())
             .expect("Shall not be initialized yet");
 
-        Ok(FileSystem)
+        Ok(())
     }
 
     /// Calling this function creates a new instance of the FileSystem.
