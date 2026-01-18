@@ -39,16 +39,19 @@ impl<'a> BencodeParser<'a> {
         self.input = &self.input[1..]; // skip 'i'
 
         // Find position of 'e'
-        let end = self.input.iter().position(|&b| b == b'e')
+        let end = self
+            .input
+            .iter()
+            .position(|&b| b == b'e')
             .ok_or(Error::InvalidSyntax)?;
 
         let (int_bytes, rest) = self.input.split_at(end);
-        
+
         // Bencode spec: integers cannot have leading plus sign
         if int_bytes.first() == Some(&b'+') {
             return Err(Error::InvalidSyntax);
         }
-        
+
         // Parse the number
         let s = str::from_utf8(int_bytes).map_err(|_| Error::InvalidSyntax)?;
         let val = s.parse::<i64>().map_err(|_| Error::InvalidSyntax)?;
@@ -60,11 +63,14 @@ impl<'a> BencodeParser<'a> {
     /// Consume a length-prefixed string: "4:spam" -> "spam"
     pub fn parse_str(&mut self) -> Result<&'a str> {
         // Find the colon
-        let colon_idx = self.input.iter().position(|&b| b == b':')
+        let colon_idx = self
+            .input
+            .iter()
+            .position(|&b| b == b':')
             .ok_or(Error::ExpectedString)?;
 
         let (len_bytes, rest) = self.input.split_at(colon_idx);
-        
+
         // Parse length
         let len_str = str::from_utf8(len_bytes).map_err(|_| Error::InvalidSyntax)?;
         let len = len_str.parse::<usize>().map_err(|_| Error::InvalidSyntax)?;
@@ -87,8 +93,8 @@ impl<'a> BencodeParser<'a> {
     /// Needed when the input has fields your struct doesn't need.
     pub fn skip_any(&mut self) -> Result<()> {
         match self.peek() {
-            Some(b'i') => { self.parse_int().map(|_| ()) }
-            Some(b'0'..=b'9') => { self.parse_str().map(|_| ()) }
+            Some(b'i') => self.parse_int().map(|_| ()),
+            Some(b'0'..=b'9') => self.parse_str().map(|_| ()),
             Some(b'l') => {
                 self.input = &self.input[1..]; // skip 'l'
                 while self.peek() != Some(b'e') {
@@ -119,7 +125,7 @@ impl<'a> BencodeParser<'a> {
             Err(Error::ExpectedDict)
         }
     }
-    
+
     /// Helper to end a dict
     pub fn match_dict_end(&mut self) -> bool {
         if self.peek() == Some(b'e') {
@@ -291,7 +297,10 @@ mod tests {
     #[test]
     fn test_expect_dict_start_fail() {
         let mut parser = BencodeParser::new(b"i42e");
-        assert!(matches!(parser.expect_dict_start(), Err(Error::ExpectedDict)));
+        assert!(matches!(
+            parser.expect_dict_start(),
+            Err(Error::ExpectedDict)
+        ));
     }
 
     #[test]
@@ -310,15 +319,15 @@ mod tests {
     fn test_dict_parsing_workflow() {
         let mut parser = BencodeParser::new(b"d3:key5:value3:fooi42ee");
         parser.expect_dict_start().unwrap();
-        
+
         // Parse first key-value pair
         assert_eq!(parser.parse_str().unwrap(), "key");
         assert_eq!(parser.parse_str().unwrap(), "value");
-        
+
         // Parse second key-value pair
         assert_eq!(parser.parse_str().unwrap(), "foo");
         assert_eq!(parser.parse_int().unwrap(), 42);
-        
+
         // Check dict end
         assert!(parser.match_dict_end());
     }
@@ -327,11 +336,11 @@ mod tests {
     fn test_skip_unknown_fields_in_dict() {
         let mut parser = BencodeParser::new(b"d7:ignored4:datai99e");
         parser.expect_dict_start().unwrap();
-        
+
         // Skip first key-value pair
         parser.skip_any().unwrap(); // key
         parser.skip_any().unwrap(); // value
-        
+
         // Parse the integer that follows
         assert_eq!(parser.parse_int().unwrap(), 99);
     }
@@ -452,19 +461,28 @@ mod tests {
     #[test]
     fn test_expect_dict_start_on_list() {
         let mut parser = BencodeParser::new(b"li42ee");
-        assert!(matches!(parser.expect_dict_start(), Err(Error::ExpectedDict)));
+        assert!(matches!(
+            parser.expect_dict_start(),
+            Err(Error::ExpectedDict)
+        ));
     }
 
     #[test]
     fn test_expect_dict_start_on_string() {
         let mut parser = BencodeParser::new(b"4:spam");
-        assert!(matches!(parser.expect_dict_start(), Err(Error::ExpectedDict)));
+        assert!(matches!(
+            parser.expect_dict_start(),
+            Err(Error::ExpectedDict)
+        ));
     }
 
     #[test]
     fn test_expect_dict_start_empty_input() {
         let mut parser = BencodeParser::new(b"");
-        assert!(matches!(parser.expect_dict_start(), Err(Error::ExpectedDict)));
+        assert!(matches!(
+            parser.expect_dict_start(),
+            Err(Error::ExpectedDict)
+        ));
     }
 
     #[test]
