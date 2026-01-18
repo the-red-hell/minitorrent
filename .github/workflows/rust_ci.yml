@@ -13,29 +13,71 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  rust-checks:
-    name: Rust Checks
+  # JOB 1: Test the libraries on the Host (Ubuntu)
+  # This verifies the logic crates (bencode, core-logic) work correctly.
+  test-libraries:
+    name: Test Libraries (Host)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        action:
-          - command: build
-            args: --release
-          - command: fmt
-            args: --all -- --check
-          - command: clippy
-            args: --all-features --workspace -- -D warnings
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup Rust
+      
+      - name: Setup Rust (Native)
         uses: dtolnay/rust-toolchain@v1
         with:
-          target: riscv32imc-unknown-none-elf
           toolchain: nightly
-          components: rust-src, rustfmt, clippy
+          components: rustfmt, clippy
+
       - name: Enable caching
         uses: Swatinem/rust-cache@v2
-      - name: Run command
-        run: cargo ${{ matrix.action.command }} ${{ matrix.action.args }}
+
+      # Run tests specifically for the library packages
+      - name: Run Lib Tests
+        run: cargo test -p bencode -p core-logic
+
+      # Run Clippy specifically for the libraries
+      - name: Clippy (Libs)
+        run: cargo clippy -p bencode -p core-logic -- -D warnings
+
+  # JOB 2: Build the Firmware for ESP32
+  # This installs the RISC-V target and builds inside the esp-app folder.
+  build-firmware:
+    name: Build ESP32 Firmware
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Rust (Embedded)
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: nightly
+          # Install the specific target for the chip
+          target: riscv32imc-unknown-none-elf
+          components: rust-src, clippy
+
+      - name: Enable caching
+        uses: Swatinem/rust-cache@v2
+
+      # Critical: switch to the app directory so .cargo/config.toml is found!
+      - name: Build Firmware
+        working-directory: ./esp-app
+        run: cargo build --release
+
+      # Optional: Clippy for the firmware specifically
+      - name: Clippy (Firmware)
+        working-directory: ./esp-app
+        run: cargo clippy --release -- -D warnings
+
+  # JOB 3: Check Formatting (Global)
+  # Formatting is target-agnostic, so we can do it once for the whole workspace.
+  check-format:
+    name: Check Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt
+      - run: cargo fmt --all -- --check
