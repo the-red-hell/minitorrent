@@ -31,7 +31,7 @@ impl FileSystem {
         let sd_card = sd_card::SdCard::init(initializer, spi)?;
 
         VOLUME_MGR
-            .init(sd_card.to_volume_mgr())
+            .init(sd_card.into_volume_mgr())
             .map_err(|_| ())
             .expect("Shall not be initialized yet");
 
