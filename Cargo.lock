@@ -29,6 +29,9 @@ checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 [[package]]
 name = "bencode"
 version = "0.1.0"
+dependencies = [
+ "defmt 1.0.1",
+]
 
 [[package]]
 name = "bitfield"
@@ -115,6 +118,7 @@ name = "core-logic"
 version = "0.1.0"
 dependencies = [
  "bencode",
+ "defmt 1.0.1",
 ]
 
 [[package]]
@@ -659,6 +663,7 @@ dependencies = [
 name = "esp-app"
 version = "0.1.0"
 dependencies = [
+ "core-logic",
  "critical-section",
  "defmt 1.0.1",
  "embassy-embedded-hal",

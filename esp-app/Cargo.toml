@@ -80,6 +80,8 @@ serde = { version = "1.0.0", default-features = false, features = [
   "derive",
 ] }
 
+core-logic = { path = "../core-logic" }
+
 [profile.dev]
 # Rust debug is too slow.
 # For debug builds always builds with some optimization
