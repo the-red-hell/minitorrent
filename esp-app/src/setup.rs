@@ -25,7 +25,7 @@ pub async fn setup(spawner: embassy_executor::Spawner) {
     info!("Embassy initialized!");
 
     // WIFI
-    wifi::setup::wifi_setup(spawner, peripherals.WIFI).await;
+    let _stack = wifi::setup::wifi_setup(spawner, peripherals.WIFI).await;
 
     // SD CARD
     let fs_init = sd_card::SPIInitializer::new(
