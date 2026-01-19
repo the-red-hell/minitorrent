@@ -5,6 +5,7 @@ use defmt::Format;
 pub struct MetaInfoFile<'a> {
     pub announce: &'a str,
     pub info: Info<'a>,
+    pub info_hash: [u8; 20],
 }
 
 #[derive(Debug, PartialEq, Format)]
@@ -22,6 +23,7 @@ impl<'a> MetaInfoFile<'a> {
         // Prepare default values (Option is useful here if fields are optional)
         let mut announce = None;
         let mut info = None;
+        let mut info_hash = [0u8; 20];
 
         p.expect_dict_start()?;
 
@@ -34,7 +36,9 @@ impl<'a> MetaInfoFile<'a> {
                     announce = Some(p.parse_str()?);
                 }
                 "info" => {
-                    info = Some(Info::parse(p.remaining())?);
+                    let info_bytes = p.parse_raw_value()?;
+                    info_hash = sha1_smol::Sha1::from(info_bytes).digest().bytes();
+                    info = Some(Info::parse(info_bytes)?);
                     // Now let's say I'm lazy to come up with anything else and
                     // assume that the 'announce' key always comes first.
                     break; // We're not interested in anything else.
@@ -49,6 +53,7 @@ impl<'a> MetaInfoFile<'a> {
         Ok(MetaInfoFile {
             announce: announce.ok_or(Error::UnknownField)?,
             info: info.ok_or(Error::UnknownField)?,
+            info_hash,
         })
     }
 }
@@ -132,9 +137,17 @@ mod tests {
         input.extend_from_slice(&HASH_B);
 
         input.extend_from_slice(b"e");
+        input.extend_from_slice(b"i3ei9e"); // Extra junk fields after 'info'
         input.extend_from_slice(b"e");
 
         let torrent = MetaInfoFile::parse(&input).expect("Should parse valid input");
+
+        assert_eq!(
+            torrent.info_hash,
+            sha1_smol::Sha1::from(&input[35..input.len() - 1 - 6]) // Exclude trailing junk
+                .digest()
+                .bytes()
+        );
 
         assert_eq!(torrent.announce, "http://test.com");
         assert_eq!(torrent.info.length, 1048576);
