@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 bencode = { path = "../bencode" }
 defmt = "1.0.1"
+sha1_smol = "1.0.1"
