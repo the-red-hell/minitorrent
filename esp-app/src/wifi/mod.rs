@@ -1,5 +1,6 @@
 use core::net::Ipv4Addr;
 
+use core_logic::wifi::WifiStack;
 use embassy_net::{
     Stack,
     dns::DnsSocket,
@@ -9,15 +10,16 @@ use embassy_net::{
 mod network;
 pub(crate) mod setup;
 
-pub struct WifiStack(Stack<'static>);
+pub struct EspWifiStack(Stack<'static>);
 
-impl WifiStack {
+impl WifiStack for EspWifiStack {
+    type Error = reqwless::Error;
     /// makes a GET request to the provided url and returns the response body
-    pub async fn make_http_request<'a>(
+    async fn make_http_request<'a>(
         &self,
         url: &str,
         rx_buf: &'a mut [u8],
-    ) -> Result<&'a mut [u8], reqwless::Error> {
+    ) -> Result<&'a mut [u8], Self::Error> {
         let state = TcpClientState::<1, 1024, 4096>::new();
         let client = TcpClient::new(self.0, &state);
 
@@ -35,7 +37,7 @@ impl WifiStack {
             .await
     }
 
-    pub fn get_ipv4(&self) -> Ipv4Addr {
+    fn get_ipv4(&self) -> Ipv4Addr {
         if let Some(config) = self.0.config_v4() {
             config.address.address()
         } else {

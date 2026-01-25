@@ -1,12 +1,15 @@
+use core_logic::BitTorrenter;
 use defmt::info;
 use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 
 use crate::{
-    fs::{FileSystem, sd_card},
-    wifi,
+    fs::{EspFileSystem, sd_card},
+    wifi::{self, EspWifiStack},
 };
 
-pub async fn setup(spawner: embassy_executor::Spawner) {
+pub async fn setup(
+    spawner: embassy_executor::Spawner,
+) -> BitTorrenter<EspWifiStack, EspFileSystem> {
     // generator version: 1.0.1
 
     rtt_target::rtt_init_defmt!();
@@ -25,7 +28,7 @@ pub async fn setup(spawner: embassy_executor::Spawner) {
     info!("Embassy initialized!");
 
     // WIFI
-    let _stack = wifi::setup::wifi_setup(spawner, peripherals.WIFI).await;
+    let wifi = wifi::setup::wifi_setup(spawner, peripherals.WIFI).await;
 
     // SD CARD
     let fs_init = sd_card::SPIInitializer::new(
@@ -34,13 +37,11 @@ pub async fn setup(spawner: embassy_executor::Spawner) {
         peripherals.GPIO6,
         peripherals.GPIO7,
     );
-    FileSystem::setup(fs_init, peripherals.SPI2).await.unwrap();
+    let fs = EspFileSystem::setup(fs_init, peripherals.SPI2)
+        .await
+        .unwrap();
 
     info!("Done initializing.");
 
-    // let file = get_torrent().await.unwrap();
-    // warn!("WE GOT THE FILE WITH: {:?}", file.as_slice());
-    // let volume_mgr = sdcard.to_volume_mgr();
-    // let volume = volume_mgr.get_volume();
-    // let root_dir = volume.open_root_dir();
+    BitTorrenter::new(wifi, fs)
 }
