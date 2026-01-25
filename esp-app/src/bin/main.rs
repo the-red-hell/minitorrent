@@ -26,11 +26,9 @@ esp_bootloader_esp_idf::esp_app_desc!();
 async fn main(spawner: Spawner) -> ! {
     // generator version: 1.0.1
 
-    esp_app::setup::setup(spawner).await;
+    let mut bittorrenter = esp_app::setup::setup(spawner).await;
 
-    let file = esp_app::torrent_retrieval::get_torrent_from_file()
-        .await
-        .unwrap();
+    let file = bittorrenter.fs().get_torrent_from_file().await.unwrap();
     let file = file.as_slice();
     info!("WE GOT THE FILE WITH: {:?}", file);
 
