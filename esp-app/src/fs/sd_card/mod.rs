@@ -1,4 +1,4 @@
-pub mod volume;
+pub mod volume_mgr;
 
 use core::marker::PhantomData;
 
@@ -13,36 +13,39 @@ use esp_hal::{
     time,
 };
 
-use crate::fs::sd_card::volume::VolumeMgr;
+use crate::fs::sd_card::volume_mgr::VolumeMgr;
 
 #[derive(Debug)]
 pub enum SdCardError {
     SPIError,
 }
 
-pub(super) struct SdCard<'a>(
-    embedded_sdmmc::SdCard<ExclusiveDevice<Spi<'a, Blocking>, gpio::Output<'a>, Delay>, Delay>,
+pub(super) struct SdCard(
+    embedded_sdmmc::SdCard<
+        ExclusiveDevice<Spi<'static, Blocking>, gpio::Output<'static>, Delay>,
+        Delay,
+    >,
 );
 
 /// A struct holding all the data of the physically connected pins to the SD Card module.
-pub struct SPIInitializer<'a, SCK, MISO, MOSI, CS>
+pub struct SPIInitializer<SCK, MISO, MOSI, CS>
 where
-    SCK: gpio::interconnect::PeripheralOutput<'a>,
-    MISO: gpio::interconnect::PeripheralInput<'a>,
-    MOSI: gpio::interconnect::PeripheralOutput<'a>,
+    SCK: gpio::interconnect::PeripheralOutput<'static>,
+    MISO: gpio::interconnect::PeripheralInput<'static>,
+    MOSI: gpio::interconnect::PeripheralOutput<'static>,
     CS: gpio::OutputPin,
 {
     sck: SCK,
     miso: MISO,
     mosi: MOSI,
     cs: CS,
-    _phantom: PhantomData<&'a bool>,
+    _phantom: PhantomData<&'static bool>,
 }
-impl<'a, SCK, MISO, MOSI, CS> SPIInitializer<'a, SCK, MISO, MOSI, CS>
+impl<SCK, MISO, MOSI, CS> SPIInitializer<SCK, MISO, MOSI, CS>
 where
-    SCK: gpio::interconnect::PeripheralOutput<'a>,
-    MISO: gpio::interconnect::PeripheralInput<'a>,
-    MOSI: gpio::interconnect::PeripheralOutput<'a>,
+    SCK: gpio::interconnect::PeripheralOutput<'static>,
+    MISO: gpio::interconnect::PeripheralInput<'static>,
+    MOSI: gpio::interconnect::PeripheralOutput<'static>,
     CS: gpio::OutputPin,
 {
     pub fn new(sck: SCK, miso: MISO, mosi: MOSI, cs: CS) -> Self {
@@ -56,19 +59,18 @@ where
     }
 }
 
-impl<'a> SdCard<'a> {
+impl SdCard {
     /// Initializes the SD Card.
-    pub(super) fn init<'b, SPI, SCK, MISO, MOSI, CS>(
-        initializer: SPIInitializer<'b, SCK, MISO, MOSI, CS>,
+    pub(super) fn init<SPI, SCK, MISO, MOSI, CS>(
+        initializer: SPIInitializer<SCK, MISO, MOSI, CS>,
         spi: SPI,
     ) -> Result<Self, SdCardError>
     where
-        'b: 'a,
-        SPI: spi::master::Instance + 'b,
-        SCK: gpio::interconnect::PeripheralOutput<'b>,
-        MISO: gpio::interconnect::PeripheralInput<'b>,
-        MOSI: gpio::interconnect::PeripheralOutput<'b>,
-        CS: gpio::OutputPin + 'b,
+        SPI: spi::master::Instance + 'static,
+        SCK: gpio::interconnect::PeripheralOutput<'static>,
+        MISO: gpio::interconnect::PeripheralInput<'static>,
+        MOSI: gpio::interconnect::PeripheralOutput<'static>,
+        CS: gpio::OutputPin + 'static,
     {
         let spi_bus = Spi::new(
             spi,
@@ -122,16 +124,16 @@ impl<'a> SdCard<'a> {
         Ok(SdCard(sdcard))
     }
 
-    pub(super) fn into_volume_mgr(self) -> VolumeMgr<'a> {
+    pub(super) fn into_volume_mgr(self) -> VolumeMgr {
         self.into()
     }
 }
 
-impl<'a> From<SdCard<'a>> for VolumeMgr<'a> {
-    fn from(value: SdCard<'a>) -> Self {
+impl From<SdCard> for VolumeMgr {
+    fn from(value: SdCard) -> Self {
         let volume_mgr = embedded_sdmmc::VolumeManager::new(value.0, Clock);
         info!("has opened handles: {}", volume_mgr.has_open_handles());
-        VolumeMgr(volume_mgr)
+        VolumeMgr::new(volume_mgr)
     }
 }
 
