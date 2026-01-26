@@ -25,9 +25,7 @@ where
                     && file_name.is_none()
                 {
                     defmt::trace!("found torrent: {}", name);
-                    file_name
-                        .replace(dir.name.clone())
-                        .expect("we checked that it is uninitialized");
+                    file_name = Some(dir.name.clone());
                 } else {
                     defmt::trace!("found file to ignore: {}", name);
                 }
