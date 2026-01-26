@@ -1,7 +1,6 @@
-pub mod volume_mgr;
-
 use core::marker::PhantomData;
 
+use core_logic::fs::VolumeMgr;
 use defmt::{info, warn};
 use embedded_hal_bus::spi::ExclusiveDevice;
 use embedded_sdmmc::{TimeSource, sdcard::AcquireOpts};
@@ -13,7 +12,7 @@ use esp_hal::{
     time,
 };
 
-use crate::fs::sd_card::volume_mgr::VolumeMgr;
+use crate::fs::EspVolumeMgr;
 
 #[derive(Debug)]
 pub enum SdCardError {
@@ -124,16 +123,16 @@ impl SdCard {
         Ok(SdCard(sdcard))
     }
 
-    pub(super) fn into_volume_mgr(self) -> VolumeMgr {
+    pub(super) fn into_volume_mgr(self) -> EspVolumeMgr {
         self.into()
     }
 }
 
-impl From<SdCard> for VolumeMgr {
+impl From<SdCard> for EspVolumeMgr {
     fn from(value: SdCard) -> Self {
         let volume_mgr = embedded_sdmmc::VolumeManager::new(value.0, Clock);
         info!("has opened handles: {}", volume_mgr.has_open_handles());
-        VolumeMgr::new(volume_mgr)
+        EspVolumeMgr::new(volume_mgr)
     }
 }
 
