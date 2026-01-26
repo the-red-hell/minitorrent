@@ -1,30 +1,35 @@
 #![cfg_attr(not(test), no_std)]
 
-use crate::{fs::FileSystem, wifi::WifiStack};
+extern crate alloc;
+
+use crate::{
+    fs::{FileSystem, VolumeMgr},
+    wifi::WifiStack,
+};
 
 pub mod fs;
 pub mod metainfo;
 pub mod wifi;
 
-pub struct BitTorrenter<WIFI, FS>
+pub struct BitTorrenter<WIFI, V>
 where
     WIFI: WifiStack,
-    FS: FileSystem,
+    V: VolumeMgr,
 {
     wifi: WIFI,
-    fs: FS,
+    fs: FileSystem<V>,
 }
 
-impl<WIFI, FS> BitTorrenter<WIFI, FS>
+impl<WIFI, V> BitTorrenter<WIFI, V>
 where
     WIFI: WifiStack,
-    FS: FileSystem,
+    V: VolumeMgr,
 {
-    pub fn new(wifi: WIFI, fs: FS) -> Self {
+    pub fn new(wifi: WIFI, fs: FileSystem<V>) -> Self {
         Self { wifi, fs }
     }
 
-    pub fn fs(&mut self) -> &mut FS {
+    pub fn fs(&mut self) -> &mut FileSystem<V> {
         &mut self.fs
     }
 

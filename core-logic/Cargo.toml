@@ -7,3 +7,6 @@ edition = "2024"
 bencode = { path = "../bencode" }
 defmt = "1.0.1"
 sha1_smol = "1.0.1"
+embedded-sdmmc = { version = "0.9.0", default-features = false, features = [
+    "defmt-log",
+] }

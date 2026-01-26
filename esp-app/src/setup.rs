@@ -3,13 +3,11 @@ use defmt::info;
 use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 
 use crate::{
-    fs::{EspFileSystem, sd_card},
+    fs::{initialize_esp_fs, sd_card, volume_mgr::EspVolumeMgr},
     wifi::{self, EspWifiStack},
 };
 
-pub async fn setup(
-    spawner: embassy_executor::Spawner,
-) -> BitTorrenter<EspWifiStack, EspFileSystem> {
+pub async fn setup(spawner: embassy_executor::Spawner) -> BitTorrenter<EspWifiStack, EspVolumeMgr> {
     // generator version: 1.0.1
 
     rtt_target::rtt_init_defmt!();
@@ -37,9 +35,7 @@ pub async fn setup(
         peripherals.GPIO6,
         peripherals.GPIO7,
     );
-    let fs = EspFileSystem::setup(fs_init, peripherals.SPI2)
-        .await
-        .unwrap();
+    let fs = initialize_esp_fs(fs_init, peripherals.SPI2).await.unwrap();
 
     info!("Done initializing.");
 

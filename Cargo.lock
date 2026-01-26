@@ -219,6 +219,7 @@ version = "0.1.0"
 dependencies = [
  "bencode",
  "defmt 1.0.1",
+ "embedded-sdmmc",
  "sha1_smol",
 ]
 
