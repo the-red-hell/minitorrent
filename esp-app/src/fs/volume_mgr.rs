@@ -15,8 +15,8 @@ type SdCardBlockDevice<'a> =
 pub struct EspVolumeMgr(pub(in crate::fs) VolumeMgrType<'static>);
 
 impl VolumeMgr for EspVolumeMgr {
-    type B = SdCardBlockDevice<'static>;
-    type T = Clock;
+    type BlockDevice = SdCardBlockDevice<'static>;
+    type TimeSource = Clock;
 
     fn new(vol_mgr: VolumeManager<SdCardBlockDevice<'static>, Clock>) -> Self {
         Self(vol_mgr)
