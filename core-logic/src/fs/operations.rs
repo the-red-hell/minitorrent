@@ -55,7 +55,7 @@ impl<V> FileSystemExt for FileSystem<V>
 where
     V: VolumeMgr,
 {
-    type Error = embedded_sdmmc::Error<<V::B as BlockDevice>::Error>;
+    type Error = embedded_sdmmc::Error<<V::BlockDevice as BlockDevice>::Error>;
 
     fn _write_to_opened_file(&self, buf: &[u8]) -> Result<(), Self::Error> {
         let file = self
