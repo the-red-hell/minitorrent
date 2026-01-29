@@ -78,7 +78,7 @@ fn create_fat32_disk_with_files() -> std::io::Result<()> {
     // Add file in subdirectory
     let torrents_dir = root_dir.open_dir("torrents")?;
     let mut torrent_file = torrents_dir.create_file("example.torrent")?;
-    torrent_file.write_all(b"torrent data here")?;
+    torrent_file.write_all(crate::TORRENT_STRING)?;
 
     // Drop filesystem to flush changes
     drop(torrent_file);
@@ -93,8 +93,11 @@ fn create_fat32_disk_with_files() -> std::io::Result<()> {
     Ok(())
 }
 
+/// Recursively print a directory listing for the open directory given.
 ///
 /// The path is for display purposes only.
+///
+/// props to: https://github.com/rust-embedded-community/embedded-sdmmc-rs/blob/8d30ebcf7d3753d7f3f984a43934e69fa9d589d9/examples/list_dir.rs
 pub(super) fn list_dir(
     directory: Directory<'_, LinuxBlockDevice, Clock, 4, 4, 1>,
     path: &str,
