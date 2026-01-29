@@ -298,6 +298,7 @@ dependencies = [
  "defmt 1.0.1",
  "embedded-sdmmc",
  "fatfs",
+ "hex",
  "mbrman",
  "sha1_smol",
  "tokio",

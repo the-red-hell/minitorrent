@@ -3,7 +3,7 @@ use std::ops::Deref;
 use core_logic::fs::VolumeMgr;
 use embedded_sdmmc::VolumeManager;
 
-use crate::fs_duples::blockdevice::{Clock, LinuxBlockDevice};
+use crate::fs_helper::blockdevice::{Clock, LinuxBlockDevice};
 
 pub type VolumeMgrType = VolumeManager<LinuxBlockDevice, Clock>;
 

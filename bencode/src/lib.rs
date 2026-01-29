@@ -1,15 +1,16 @@
 #![cfg_attr(not(test), no_std)]
 
+use core::str::Utf8Error;
+
 pub use crate::deserialize::BencodeParser;
-use defmt::Format;
 
 mod deserialize;
 
-#[derive(Debug, Clone, Copy, Format)]
+#[derive(Debug, Clone, Copy)]
 pub enum Error {
     UnexpectedEof,
     InvalidSyntax,
-    InvalidUtf8,
+    InvalidUtf8(Utf8Error),
     ExpectedInteger,
     ExpectedString,
     ExpectedDict,

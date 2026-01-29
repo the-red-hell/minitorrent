@@ -31,7 +31,7 @@ where
     }
 
     fn set_current_dir(&mut self, dir: RawDirectory) {
-        let dir = core::mem::replace(&mut self.opened_dir, Some(dir));
+        let dir = self.opened_dir.replace(dir);
         if let Some(dir) = dir {
             let _closing_result = self.get_volume_mgr().close_dir(dir);
         }
