@@ -48,7 +48,7 @@ impl<'a> BencodeParser<'a> {
     /// Consume a length-prefixed byte string: "4:spam" -> "spam" and utf-8 decode it
     pub fn parse_str(&mut self) -> Result<&'a str> {
         let s_bytes = self.parse_str_bytes()?;
-        let s = str::from_utf8(s_bytes).map_err(|_| Error::InvalidUtf8)?;
+        let s = str::from_utf8(s_bytes).map_err(Error::InvalidUtf8)?;
 
         Ok(s)
     }
@@ -97,7 +97,7 @@ impl<'a> BencodeParser<'a> {
     pub fn skip_any(&mut self) -> Result<()> {
         match self.peek() {
             Some(b'i') => self.parse_int().map(|_| ()),
-            Some(b'0'..=b'9') => self.parse_str().map(|_| ()),
+            Some(b'0'..=b'9') => self.parse_str_bytes().map(|_| ()),
             Some(b'l') => {
                 self.input = &self.input[1..]; // skip 'l'
                 while self.peek() != Some(b'e') {
@@ -404,7 +404,7 @@ mod tests {
     fn test_parse_str_invalid_utf8() {
         // Invalid UTF-8 sequence
         let mut parser = BencodeParser::new(b"4:\xff\xfe\xfd\xfc");
-        assert!(matches!(parser.parse_str(), Err(Error::InvalidUtf8)));
+        assert!(matches!(parser.parse_str(), Err(Error::InvalidUtf8(_))));
     }
 
     #[test]

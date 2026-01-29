@@ -1,27 +1,31 @@
 use core_logic::fs::{FileSystem, VolumeMgr};
-use embedded_sdmmc::{Directory, Error, ShortFileName, VolumeManager};
+use embedded_sdmmc::VolumeManager;
 use fatfs::{FatType, FormatVolumeOptions, format_volume};
 use mbrman::{CHS, MBR};
 use std::io::{Seek, Write};
 use std::path::Path;
 use std::{fs::File, io::SeekFrom};
 
-use crate::fs_duples::{
+use crate::fs_helper::{
     blockdevice::{Clock, LinuxBlockDevice},
     volume_mgr::VolumeMgrDuple,
 };
 
-mod blockdevice;
-mod volume_mgr;
+pub const TORRENT_STRING: &'static [u8] = include_bytes!("../sample.torrent");
+
+pub mod blockdevice;
+pub mod volume_mgr;
 
 pub fn init_fs_duple() -> FileSystem<VolumeMgrDuple> {
     create_fat32_disk_with_files().unwrap();
-    return FileSystem::new(VolumeMgrDuple::new(VolumeManager::new(
+
+    FileSystem::new(VolumeMgrDuple::new(VolumeManager::new(
         LinuxBlockDevice::new("tests/disk.img", false).unwrap(),
         Clock,
-    )));
+    )))
 }
 
+/// sank you copilot <3
 fn create_fat32_disk_with_files() -> std::io::Result<()> {
     let size_mb = 512;
     let path = "tests/disk.img";
@@ -78,7 +82,7 @@ fn create_fat32_disk_with_files() -> std::io::Result<()> {
     // Add file in subdirectory
     let torrents_dir = root_dir.open_dir("torrents")?;
     let mut torrent_file = torrents_dir.create_file("example.torrent")?;
-    torrent_file.write_all(crate::TORRENT_STRING)?;
+    torrent_file.write_all(TORRENT_STRING)?;
 
     // Drop filesystem to flush changes
     drop(torrent_file);
@@ -90,47 +94,5 @@ fn create_fat32_disk_with_files() -> std::io::Result<()> {
     // Write partition back to disk
     disk.write_all(partition.get_ref())?;
 
-    Ok(())
-}
-
-/// Recursively print a directory listing for the open directory given.
-///
-/// The path is for display purposes only.
-///
-/// props to: https://github.com/rust-embedded-community/embedded-sdmmc-rs/blob/8d30ebcf7d3753d7f3f984a43934e69fa9d589d9/examples/list_dir.rs
-pub(super) fn list_dir(
-    directory: Directory<'_, LinuxBlockDevice, Clock, 4, 4, 1>,
-    path: &str,
-) -> Result<(), Error<<LinuxBlockDevice as embedded_sdmmc::BlockDevice>::Error>> {
-    println!("Listing {}", path);
-    let mut children = Vec::new();
-    directory.iterate_dir(|entry| {
-        println!(
-            "{:12} {:9} {} {}",
-            entry.name,
-            entry.size,
-            entry.mtime,
-            if entry.attributes.is_directory() {
-                "<DIR>"
-            } else {
-                ""
-            }
-        );
-        if entry.attributes.is_directory()
-            && entry.name != ShortFileName::parent_dir()
-            && entry.name != ShortFileName::this_dir()
-        {
-            children.push(entry.name.clone());
-        }
-    })?;
-    for child_name in children {
-        let child_dir = directory.open_dir(&child_name)?;
-        let child_path = if path == "/" {
-            format!("/{}", child_name)
-        } else {
-            format!("{}/{}", path, child_name)
-        };
-        list_dir(child_dir, &child_path)?;
-    }
     Ok(())
 }
