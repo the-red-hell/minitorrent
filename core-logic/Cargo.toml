@@ -17,3 +17,4 @@ tokio = { version = "1", features = ["macros", "rt"] }
 fatfs = "0.3.6"
 mbrman = "0.6.1"
 hex = "0.4.3"
+reqwest = "0.13.1"
