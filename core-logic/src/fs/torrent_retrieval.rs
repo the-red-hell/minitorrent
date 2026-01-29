@@ -13,7 +13,10 @@ where
         self.go_to_root_dir();
         self.open_dir("torrents")
             .expect("'torrents' directory not found.");
-        let torrents = self.get_current_dir().to_directory(self.get_volume_mgr());
+        let torrents = self
+            .take_current_dir()
+            .expect("root dir should be open")
+            .to_directory(self.get_volume_mgr());
 
         let mut lfn_buffer_storage = [0; 20];
         let mut lfn_buffer = LfnBuffer::new(&mut lfn_buffer_storage);
@@ -31,20 +34,14 @@ where
                 }
             })
             .expect("Couldn't iterate dir");
-        drop(torrents);
 
         if let Some(file_name) = file_name.as_ref() {
-            self.open_file(file_name)
+            let file = torrents
+                .open_file_in_dir(file_name, embedded_sdmmc::Mode::ReadOnly)
                 .expect("we just found the file with this name");
-            let mut buf = vec![
-                0u8;
-                self.get_open_file()
-                    .unwrap()
-                    .to_file(self.get_volume_mgr())
-                    .length() as usize
-            ];
+            let mut buf = vec![0u8; file.length() as usize];
 
-            self.read_to_end(&mut buf).expect("Couldn't read file");
+            file.read(&mut buf).expect("Couldn't read file");
             defmt::info!("Using torrent-file {}", file_name.to_string().as_str());
             Some(buf)
         } else {
