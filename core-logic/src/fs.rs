@@ -39,15 +39,11 @@ where
 {
     fn drop(&mut self) {
         // Close directory
-        self.get_volume_mgr()
-            .close_dir(self.opened_dir)
-            .expect("Directory could not be closed.");
+        let _close_dir_result = self.get_volume_mgr().close_dir(self.opened_dir);
 
         // Close file
         if let Some(file) = self.open_file {
-            self.get_volume_mgr()
-                .close_file(file)
-                .expect("File could not be closed.");
+            let _close_file_result = self.get_volume_mgr().close_file(file);
         }
 
         // Close volume
