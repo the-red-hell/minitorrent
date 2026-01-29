@@ -1,6 +1,10 @@
 use core_logic::fs::{FileSystem, VolumeMgr};
-use embedded_sdmmc::VolumeManager;
+use embedded_sdmmc::{Directory, Error, ShortFileName, VolumeManager};
+use fatfs::{FatType, FormatVolumeOptions, format_volume};
 use mbrman::{CHS, MBR};
+use std::io::{Seek, Write};
+use std::path::Path;
+use std::{fs::File, io::SeekFrom};
 
 use crate::fs_duples::{
     blockdevice::{Clock, LinuxBlockDevice},
@@ -13,15 +17,10 @@ mod volume_mgr;
 pub fn init_fs_duple() -> FileSystem<VolumeMgrDuple> {
     create_fat32_disk_with_files().unwrap();
     return FileSystem::new(VolumeMgrDuple::new(VolumeManager::new(
-        LinuxBlockDevice::new("tests/disk.img", true).unwrap(),
+        LinuxBlockDevice::new("tests/disk.img", false).unwrap(),
         Clock,
     )));
 }
-
-use fatfs::{FatType, FormatVolumeOptions, format_volume};
-use std::io::{Seek, Write};
-use std::path::Path;
-use std::{fs::File, io::SeekFrom};
 
 fn create_fat32_disk_with_files() -> std::io::Result<()> {
     let size_mb = 512;
@@ -91,5 +90,44 @@ fn create_fat32_disk_with_files() -> std::io::Result<()> {
     // Write partition back to disk
     disk.write_all(partition.get_ref())?;
 
+    Ok(())
+}
+
+///
+/// The path is for display purposes only.
+pub(super) fn list_dir(
+    directory: Directory<'_, LinuxBlockDevice, Clock, 4, 4, 1>,
+    path: &str,
+) -> Result<(), Error<<LinuxBlockDevice as embedded_sdmmc::BlockDevice>::Error>> {
+    println!("Listing {}", path);
+    let mut children = Vec::new();
+    directory.iterate_dir(|entry| {
+        println!(
+            "{:12} {:9} {} {}",
+            entry.name,
+            entry.size,
+            entry.mtime,
+            if entry.attributes.is_directory() {
+                "<DIR>"
+            } else {
+                ""
+            }
+        );
+        if entry.attributes.is_directory()
+            && entry.name != ShortFileName::parent_dir()
+            && entry.name != ShortFileName::this_dir()
+        {
+            children.push(entry.name.clone());
+        }
+    })?;
+    for child_name in children {
+        let child_dir = directory.open_dir(&child_name)?;
+        let child_path = if path == "/" {
+            format!("/{}", child_name)
+        } else {
+            format!("{}/{}", path, child_name)
+        };
+        list_dir(child_dir, &child_path)?;
+    }
     Ok(())
 }
