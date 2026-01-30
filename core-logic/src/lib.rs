@@ -7,9 +7,11 @@ use crate::{
     wifi::WifiStack,
 };
 
+pub mod core;
 pub mod fs;
-pub mod metainfo;
 pub mod wifi;
+
+pub use core::metainfo::{Info, MetaInfoFile};
 
 pub struct BitTorrenter<WIFI, V>
 where
