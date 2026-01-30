@@ -1,4 +1,4 @@
-use core_logic::{metainfo::MetaInfoFile, wifi::WifiStack};
+use core_logic::{core::metainfo::MetaInfoFile, wifi::WifiStack};
 
 use crate::fs_helper::init_fs_duple;
 
