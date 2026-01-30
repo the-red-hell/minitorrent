@@ -4,6 +4,7 @@ use fatfs::{FatType, FormatVolumeOptions, format_volume};
 use mbrman::{CHS, MBR};
 use std::io::{Seek, Write};
 use std::path::Path;
+use std::sync::Mutex;
 use std::{fs::File, io::SeekFrom};
 
 use crate::fs_helper::{
@@ -16,8 +17,15 @@ pub const TORRENT_STRING: &'static [u8] = include_bytes!("../sample.torrent");
 pub mod blockdevice;
 pub mod volume_mgr;
 
+// Mutex to ensure only one test creates the disk at a time
+static DISK_INIT: Mutex<()> = Mutex::new(());
+
 pub fn init_fs_duple() -> FileSystem<VolumeMgrDuple> {
-    create_fat32_disk_with_files().unwrap();
+    // Lock only during disk creation
+    {
+        let _lock = DISK_INIT.lock().unwrap();
+        create_fat32_disk_with_files().unwrap();
+    }
 
     FileSystem::new(VolumeMgrDuple::new(VolumeManager::new(
         LinuxBlockDevice::new("tests/disk.img", false).unwrap(),
