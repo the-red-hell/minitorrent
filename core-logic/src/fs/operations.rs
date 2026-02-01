@@ -27,13 +27,13 @@ where
     }
 
     pub fn go_to_root_dir(&mut self) {
-        self.swap_current_dir(self.volume_mgr.get_root_dir(self.vol0));
+        self.close_current_dir();
+        self.opened_dir = self.volume_mgr.get_root_dir(self.vol0);
     }
 
-    fn swap_current_dir(&mut self, dir: RawDirectory) {
-        let dir = core::mem::replace(&mut self.opened_dir, dir);
+    fn close_current_dir(&mut self) {
         self.get_volume_mgr()
-            .close_dir(dir)
+            .close_dir(self.get_current_dir())
             .expect("Should not fail to close dir");
     }
 
@@ -41,7 +41,6 @@ where
         self.open_file
     }
 
-    /// Set the open file and return the previous one.
     fn close_open_file(&mut self) {
         if let Some(file) = self.open_file {
             self.get_volume_mgr()
@@ -94,7 +93,8 @@ where
             .get_volume_mgr()
             .open_dir(self.get_current_dir(), dir_name)?;
 
-        self.swap_current_dir(raw_dir);
+        self.close_current_dir();
+        self.opened_dir = raw_dir;
 
         Ok(())
     }

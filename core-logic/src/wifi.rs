@@ -1,5 +1,7 @@
 use core::net::Ipv4Addr;
 
+/// A trait that provides some abstraction for the wifi stack.
+/// This will be extended with more functionality later.
 #[allow(async_fn_in_trait)]
 pub trait WifiStack {
     type Error: defmt::Format;

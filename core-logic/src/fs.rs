@@ -5,6 +5,11 @@ pub mod torrent_retrieval;
 mod volume_mgr;
 pub use volume_mgr::VolumeMgr;
 
+/// A trait that provides some common operations for the filesystem.
+/// This is mainly for the abstraction between my own filesystem implementation and `embedded_sdmmc`
+/// (my code - `FileSystemExt`` - embedded_sdmmc)
+/// This is still depended on embedded_sdmmc for the open-mode, but making an enum for it shouldn't be too hard.
+/// I won't do this as as long as there's no async embedded-sdmmc implementation.
 #[allow(async_fn_in_trait)]
 pub trait FileSystemExt {
     type Error: core::fmt::Debug;
@@ -23,7 +28,9 @@ pub trait FileSystemExt {
     async fn read_to_end(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error>;
 }
 
-/// Struct to interact with the filesystem on the ESP32C3.
+/// Struct to provide an abstraction over the filesystem.
+/// It can do basic operations like opening files and directories,
+/// but if you want more, you'll probably have to use the `embedded_sdmmc::VolumeManager::...` methods.
 pub struct FileSystem<V>
 where
     V: VolumeMgr,
