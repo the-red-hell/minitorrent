@@ -1,3 +1,4 @@
+use core_logic::fs::FileSystemExt;
 use embedded_sdmmc::{Directory, Error, ShortFileName};
 
 use crate::fs_helper::{
@@ -16,13 +17,36 @@ async fn test_retrieve_torrent() {
     assert_eq!(torrent.unwrap().as_slice(), TORRENT_STRING);
 }
 
-#[test]
-fn list_directories() {
+#[tokio::test]
+async fn test_write_file() {
+    let file_name = "test.txt";
+    let test_text = "test";
+
     let mut fs_duple = init_fs_duple();
 
+    fs_duple
+        .open_file(file_name, embedded_sdmmc::Mode::ReadWriteCreateOrTruncate)
+        .unwrap();
+    fs_duple
+        .write_to_opened_file(test_text.as_bytes())
+        .await
+        .unwrap();
+
+    let mut buf = vec![0u8; test_text.len()];
+    fs_duple
+        .open_file(file_name, embedded_sdmmc::Mode::ReadOnly)
+        .unwrap();
+    fs_duple.read_to_end(&mut buf).await.unwrap();
+
+    assert_eq!(buf.as_slice(), test_text.as_bytes());
+}
+
+#[test]
+fn list_directories() {
+    let fs_duple = init_fs_duple();
+
     let root_dir = fs_duple
-        .take_current_dir()
-        .expect("always root dir at init")
+        .get_current_dir()
         .to_directory(fs_duple.get_volume_mgr());
     list_dir(root_dir, "/").unwrap();
 }

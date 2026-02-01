@@ -13,7 +13,7 @@ where
         Self {
             volume_mgr,
             vol0,
-            opened_dir: Some(root_dir),
+            opened_dir: root_dir,
             open_file: None,
         }
     }
@@ -22,29 +22,31 @@ where
         &self.volume_mgr
     }
 
-    pub fn take_current_dir(&mut self) -> Option<RawDirectory> {
-        self.opened_dir.take()
+    pub fn get_current_dir(&self) -> RawDirectory {
+        self.opened_dir
     }
 
     pub fn go_to_root_dir(&mut self) {
-        self.set_current_dir(self.volume_mgr.get_root_dir(self.vol0));
+        self.swap_current_dir(self.volume_mgr.get_root_dir(self.vol0));
     }
 
-    fn set_current_dir(&mut self, dir: RawDirectory) {
-        let dir = self.opened_dir.replace(dir);
-        if let Some(dir) = dir {
-            let _closing_result = self.get_volume_mgr().close_dir(dir);
-        }
+    fn swap_current_dir(&mut self, dir: RawDirectory) {
+        let dir = core::mem::replace(&mut self.opened_dir, dir);
+        self.get_volume_mgr()
+            .close_dir(dir)
+            .expect("Should not fail to close dir");
     }
 
-    pub fn take_open_file(&mut self) -> Option<RawFile> {
-        self.open_file.take()
+    pub fn get_open_file(&self) -> Option<RawFile> {
+        self.open_file
     }
 
     /// Set the open file and return the previous one.
-    fn _set_open_file(&mut self, file: RawFile) {
-        if let Some(file) = self.open_file.replace(file) {
-            let _closing_result = self.get_volume_mgr().close_file(file);
+    fn close_open_file(&mut self) {
+        if let Some(file) = self.open_file {
+            self.get_volume_mgr()
+                .close_file(file)
+                .expect("Should not fail to close file");
         }
     }
 }
@@ -55,49 +57,44 @@ where
 {
     type Error = embedded_sdmmc::Error<<V::BlockDevice as BlockDevice>::Error>;
 
-    fn _write_to_opened_file(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
-        let file = self
-            .take_open_file()
-            .expect("File not opened!")
-            .to_file(self.get_volume_mgr());
-
-        file.write(buf)
+    async fn write_to_opened_file(&mut self, buf: &[u8]) -> Result<(), Self::Error> {
+        self.get_volume_mgr().write(
+            self.get_open_file()
+                .ok_or(embedded_sdmmc::Error::BadHandle)?,
+            buf,
+        )
     }
 
-    fn _read_to_end(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        let file = self
-            .take_open_file()
-            .expect("File not opened!")
-            .to_file(self.get_volume_mgr());
-
-        file.read(buf)
+    async fn read_to_end(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        self.get_volume_mgr().read(
+            self.get_open_file()
+                .ok_or(embedded_sdmmc::Error::BadHandle)?,
+            buf,
+        )
     }
 
-    fn _open_file<N: ToShortFileName>(&mut self, file_name: N) -> Result<(), Self::Error> {
-        let raw_file = {
-            let dir = if let Some(dir) = self.take_current_dir() {
-                dir.to_directory(self.get_volume_mgr())
-            } else {
-                return Err(embedded_sdmmc::Error::BadHandle);
-            };
-            dir.open_file_in_dir(file_name, embedded_sdmmc::Mode::ReadWriteCreateOrAppend)?
-                .to_raw_file()
-        };
-        self._set_open_file(raw_file);
+    fn open_file<N: ToShortFileName>(
+        &mut self,
+        file_name: N,
+        mode: embedded_sdmmc::Mode,
+    ) -> Result<(), Self::Error> {
+        self.close_open_file();
+
+        let raw_file = self
+            .volume_mgr
+            .open_file_in_dir(self.get_current_dir(), file_name, mode)?;
+
+        self.open_file = Some(raw_file);
 
         Ok(())
     }
 
     fn open_dir<N: ToShortFileName>(&mut self, dir_name: N) -> Result<(), Self::Error> {
-        let raw_dir = {
-            let dir = if let Some(dir) = self.take_current_dir() {
-                dir.to_directory(self.get_volume_mgr())
-            } else {
-                return Err(embedded_sdmmc::Error::BadHandle);
-            };
-            dir.open_dir(dir_name)?.to_raw_directory()
-        };
-        self.set_current_dir(raw_dir);
+        let raw_dir = self
+            .get_volume_mgr()
+            .open_dir(self.get_current_dir(), dir_name)?;
+
+        self.swap_current_dir(raw_dir);
 
         Ok(())
     }
