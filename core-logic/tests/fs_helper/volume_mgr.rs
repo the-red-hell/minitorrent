@@ -7,6 +7,7 @@ use crate::fs_helper::blockdevice::{Clock, LinuxBlockDevice};
 
 pub type VolumeMgrType = VolumeManager<LinuxBlockDevice, Clock>;
 
+#[derive(Debug)]
 pub struct VolumeMgrDuple(pub VolumeMgrType);
 
 impl VolumeMgr for VolumeMgrDuple {

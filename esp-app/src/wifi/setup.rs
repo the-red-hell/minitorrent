@@ -5,31 +5,31 @@ use esp_hal::{peripherals, rng::Rng};
 use esp_radio::Controller;
 
 use crate::wifi::{
-    EspWifiStack,
+    EspWifi,
     network::{connection, net_task},
 };
 
 pub(crate) async fn wifi_setup(
     spawner: embassy_executor::Spawner,
     wifi_peripheral: peripherals::WIFI<'static>,
-) -> EspWifiStack {
-    let stack = EspWifiStack::initialize(spawner, wifi_peripheral).await;
+) -> EspWifi {
+    let wifi = EspWifi::initialize(spawner, wifi_peripheral).await;
 
-    stack.0.wait_link_up().await;
+    wifi.stack.wait_link_up().await;
 
     debug!("Waiting to get IP address...");
     loop {
-        if let Some(config) = stack.0.config_v4() {
+        if let Some(config) = wifi.stack.config_v4() {
             info!("Got IP: {}", config.address);
             break;
         }
         embassy_time::Timer::after(Duration::from_millis(500)).await;
     }
 
-    stack
+    wifi
 }
 
-impl EspWifiStack {
+impl EspWifi {
     async fn initialize(
         spawner: embassy_executor::Spawner,
         wifi_peripheral: peripherals::WIFI<'static>,
@@ -61,6 +61,6 @@ impl EspWifiStack {
         spawner.spawn(connection(wifi_controller)).ok();
         spawner.spawn(net_task(runner)).ok();
 
-        Self(stack)
+        Self::new(stack)
     }
 }

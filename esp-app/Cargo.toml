@@ -85,6 +85,7 @@ core-logic = { path = "../core-logic" }
 reqwless = { version = "0.14.0", default-features = false, features = [
   "defmt",
 ] }
+embedded-nal-async = "0.9.0"
 
 [profile.dev]
 # Rust debug is too slow.
