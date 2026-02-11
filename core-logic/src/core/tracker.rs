@@ -1,15 +1,12 @@
 use crate::core::{InfoHash, PeerId, net::percent_encode};
 use alloc::string::String;
 use core::fmt::Write;
+use heapless::Vec;
 
-pub struct TrackerResponse<'a> {
-    pub interval: u32,
-    pub peers: &'a [(core::net::Ipv4Addr, u16)],
-}
 #[derive(Debug, Clone)]
 pub struct TrackerRequest<'a> {
     /// the info hash of the torrent
-    info_hash: &'a InfoHash,
+    pub info_hash: &'a InfoHash,
     /// a unique identifier for your client
     peer_id: &'a PeerId,
     /// the port your client is listening on
@@ -52,6 +49,56 @@ impl<'a> TrackerRequest<'a> {
     }
 }
 
+#[derive(Debug)]
+pub struct TrackerResponse {
+    pub interval: u32,
+    pub peers: Vec<core::net::SocketAddrV4, 10>,
+}
+
+mod tracker_response_parser {
+    use bencode::{BencodeParser, Result};
+    use heapless::Vec;
+
+    use crate::core::tracker::TrackerResponse;
+
+    impl TrackerResponse {
+        pub fn parse(input: &[u8]) -> Result<Self> {
+            let mut p = BencodeParser::new(input);
+
+            let mut interval = 0;
+            let mut peers: Vec<core::net::SocketAddrV4, 10> = Vec::new();
+
+            p.expect_dict_start()?;
+
+            while !p.match_dict_end() {
+                let key = p.parse_str()?;
+
+                match key {
+                    "interval" => {
+                        interval = p.parse_int()? as u32;
+                    }
+                    "peers" => {
+                        let peer_bytes = p.parse_raw_value()?;
+                        // Compact peer list parsing
+                        let peer_chunks = peer_bytes.as_chunks::<6>();
+
+                        peers.extend(peer_chunks.0.iter().take(peers.capacity()).map(|chunk| {
+                            let ip =
+                                core::net::Ipv4Addr::new(chunk[0], chunk[1], chunk[2], chunk[3]);
+                            let port = u16::from_be_bytes([chunk[4], chunk[5]]);
+                            core::net::SocketAddrV4::new(ip, port)
+                        }));
+                    }
+                    _ => {
+                        p.skip_any()?;
+                    }
+                }
+            }
+
+            Ok(TrackerResponse { interval, peers })
+        }
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

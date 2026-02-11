@@ -4,10 +4,10 @@ use esp_hal::{clock::CpuClock, timer::timg::TimerGroup};
 
 use crate::{
     fs::{initialize_esp_fs, sd_card, volume_mgr::EspVolumeMgr},
-    wifi::{self, EspWifiStack},
+    wifi::{self, EspWifi},
 };
 
-pub async fn setup(spawner: embassy_executor::Spawner) -> BitTorrenter<EspWifiStack, EspVolumeMgr> {
+pub async fn setup(spawner: embassy_executor::Spawner) -> BitTorrenter<EspWifi, EspVolumeMgr> {
     // generator version: 1.0.1
 
     rtt_target::rtt_init_defmt!();

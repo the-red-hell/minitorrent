@@ -10,6 +10,9 @@ sha1_smol = "1.0.1"
 embedded-sdmmc = { version = "0.9.0", default-features = false, features = [
     "defmt-log",
 ] }
+heapless = { version = "0.9.2", features = ["defmt"] }
+embedded-nal-async = "0.9.0"
+embedded-io-async = { version = "0.7.0", features = ["defmt"] }
 
 [dev-dependencies]
 chrono = "0.4"
@@ -18,3 +21,4 @@ fatfs = "0.3.6"
 mbrman = "0.6.1"
 hex = "0.4.3"
 reqwest = "0.13.1"
+embedded-io = "0.7.1"
