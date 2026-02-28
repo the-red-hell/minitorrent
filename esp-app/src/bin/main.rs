@@ -36,6 +36,22 @@ async fn main(spawner: Spawner) -> ! {
 
     info!("WE GOT THE TORRENT WITH: {:?}", torrent);
 
+    let mut rx_buf = [0u8; 1024];
+    let res = bittorrenter
+        .make_tracker_request(&torrent, &mut rx_buf)
+        .await;
+    match res {
+        Ok(bytes_written) => {
+            let tracker_response =
+                core_logic::core::tracker::TrackerResponse::parse(&rx_buf[..bytes_written])
+                    .unwrap();
+            info!("WE GOT A TRACKER RESPONSE: {:?}", tracker_response);
+        }
+        Err(e) => {
+            info!("WE GOT AN ERROR FROM THE TRACKER");
+        }
+    }
+
     #[allow(clippy::empty_loop)]
     loop {}
 }

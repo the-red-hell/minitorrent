@@ -49,7 +49,7 @@ impl<'a> TrackerRequest<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, defmt::Format)]
 pub struct TrackerResponse {
     pub interval: u32,
     pub peers: Vec<core::net::SocketAddrV4, 10>,
