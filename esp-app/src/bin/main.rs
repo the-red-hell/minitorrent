@@ -6,17 +6,11 @@
     holding buffers for the duration of a data transfer."
 )]
 
-use core::cell::OnceCell;
-
-use critical_section::Mutex as CriticalMutex;
 use defmt::info;
 use embassy_executor::Spawner;
-use esp_hal::rtc_cntl::Rtc;
 use panic_rtt_target as _;
 
 extern crate alloc;
-
-static _RTC_CLOCK: CriticalMutex<OnceCell<Rtc>> = CriticalMutex::new(OnceCell::new());
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
@@ -47,7 +41,7 @@ async fn main(spawner: Spawner) -> ! {
                     .unwrap();
             info!("WE GOT A TRACKER RESPONSE: {:?}", tracker_response);
         }
-        Err(e) => {
+        Err(_e) => {
             info!("WE GOT AN ERROR FROM THE TRACKER");
         }
     }
