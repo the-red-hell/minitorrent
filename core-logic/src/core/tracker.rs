@@ -49,10 +49,21 @@ impl<'a> TrackerRequest<'a> {
     }
 }
 
-#[derive(Debug, defmt::Format)]
+#[derive(Debug)]
 pub struct TrackerResponse {
     pub interval: u32,
     pub peers: Vec<core::net::SocketAddrV4, 10>,
+}
+
+impl defmt::Format for TrackerResponse {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(
+            fmt,
+            "TrackerResponse {{ interval: {}, peers: {:?} }}",
+            self.interval,
+            defmt::Debug2Format(&self.peers)
+        );
+    }
 }
 
 mod tracker_response_parser {
