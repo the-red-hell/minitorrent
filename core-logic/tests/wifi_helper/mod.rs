@@ -1,10 +1,11 @@
 use std::{
     fmt::Display,
-    net::{IpAddr, SocketAddr},
+    net::{IpAddr, SocketAddr, SocketAddrV4},
 };
 
+use core_logic::TcpConnector;
 use embedded_io::ErrorType;
-use embedded_nal_async::{AddrType, Dns, TcpConnect};
+use embedded_nal_async::{AddrType, Dns};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
@@ -15,17 +16,34 @@ use tokio::{
 #[derive(Debug)]
 pub struct WifiHelper;
 
+/// Wrapper around tokio's `TcpStream` that implements `embedded_io_async` traits.
+///
+/// Unlike embassy's `TcpSocket`, tokio manages its own internal buffers,
+/// so we don't need to store the external buffers passed to `connect()`.
 #[derive(Debug)]
 pub struct TcpConnectionDuple(TcpStream);
 
-impl TcpConnect for WifiHelper {
+impl TcpConnector for WifiHelper {
     type Error = WifiError;
-    type Connection<'m> = TcpConnectionDuple;
+    type Connection<'a> = TcpConnectionDuple;
 
-    async fn connect<'m>(
-        &'m self,
-        remote: SocketAddr,
-    ) -> Result<Self::Connection<'m>, Self::Error> {
+    /// Connect to a remote address.
+    ///
+    /// # Note on buffers
+    ///
+    /// The `rx_buffer` and `tx_buffer` parameters are **ignored** in this
+    /// test implementation. Tokio's `TcpStream` manages its own internal
+    /// buffers, unlike embedded implementations (embassy) which require
+    /// caller-provided buffers.
+    ///
+    /// This is intentional - the trait is designed for embedded systems,
+    /// but for testing we use tokio which handles buffering transparently.
+    async fn connect<'a>(
+        &'a self,
+        remote: SocketAddrV4,
+        _rx_buffer: &'a mut [u8], // tokio manages its own buffers
+        _tx_buffer: &'a mut [u8], // tokio manages its own buffers
+    ) -> Result<Self::Connection<'a>, Self::Error> {
         let stream = TcpStream::connect(remote).await.map_err(WifiError::from)?;
         Ok(TcpConnectionDuple(stream))
     }
@@ -41,18 +59,20 @@ impl Dns for WifiHelper {
     ) -> Result<IpAddr, Self::Error> {
         // Parse URL to extract hostname properly
         // Use tokio's DNS resolution - append port to satisfy lookup_host requirements
-        let addrs: Vec<SocketAddr> = tokio::net::lookup_host(format!("{}:0", hostname))
+        let addrs: Vec<SocketAddrV4> = tokio::net::lookup_host(format!("{}:0", hostname))
             .await
             .map_err(WifiError::from)?
+            .filter_map(|addr| match addr {
+                SocketAddr::V4(v4) => Some(v4),
+                SocketAddr::V6(_) => None,
+            })
             .collect();
 
         // Filter by requested address type
         for addr in addrs {
             let ip = addr.ip();
             match addr_type {
-                AddrType::IPv4 if ip.is_ipv4() => return Ok(ip),
-                AddrType::IPv6 if ip.is_ipv6() => return Ok(ip),
-                AddrType::Either => return Ok(ip),
+                AddrType::IPv4 => return Ok(IpAddr::V4(*ip)),
                 _ => continue,
             }
         }

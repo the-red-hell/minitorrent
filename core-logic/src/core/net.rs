@@ -1,12 +1,81 @@
-use ::core::net::SocketAddr;
+use ::core::net::SocketAddrV4;
 use core::fmt::Write as _;
 use embedded_io_async::{Read, Write};
-use embedded_nal_async::{Dns, TcpConnect};
+use embedded_nal_async::Dns;
 use heapless::string::String;
 
 use crate::{
     BitTorrenter, BitTorrenterError, MetaInfoFile, core::tracker::TrackerRequest, fs::VolumeMgr,
 };
+
+// ============================================================================
+// TcpConnector Trait
+// ============================================================================
+
+/// A trait for establishing TCP connections where the **caller provides buffers**.
+///
+/// # Motivation
+///
+/// Unlike `embedded_nal_async::TcpConnect`, this trait accepts mutable buffer
+/// references as parameters. This design avoids interior mutability (RefCell,
+/// Mutex) in the network implementation, which is important for:
+///
+/// - **Embedded systems**: No runtime overhead from borrow checking or locking
+/// - **Clear ownership**: The caller (e.g., `BitTorrenter`) owns the buffers
+/// - **Flexible buffer sizes**: Different callers can provide different buffer sizes
+///
+/// # Buffer Lifetimes
+///
+/// The returned `Connection` borrows from the buffers, so the connection cannot
+/// outlive them. This is enforced at compile time.
+///
+/// # Example
+///
+/// ```ignore
+/// let mut rx = [0u8; 4096];
+/// let mut tx = [0u8; 1024];
+/// let socket = connector.connect(addr, &mut rx, &mut tx).await?;
+/// // socket borrows rx and tx - they cannot be used until socket is dropped
+/// ```
+///
+/// # Note on `async fn` in traits
+///
+/// We use `async fn` directly here because this trait is designed for embedded
+/// single-threaded executors (embassy) where `Send` bounds are not required.
+#[allow(async_fn_in_trait)]
+pub trait TcpConnector {
+    /// The error type returned when a connection fails.
+    ///
+    /// Must implement `Debug` for error reporting.
+    type Error: core::fmt::Debug;
+
+    /// The established TCP connection type.
+    ///
+    /// This type must implement `embedded_io_async::Read` and `Write` for
+    /// bidirectional communication.
+    type Connection<'a>: Read<Error = Self::Error> + Write<Error = Self::Error>
+    where
+        Self: 'a;
+
+    /// Establish a TCP connection to the given remote address.
+    ///
+    /// # Arguments
+    ///
+    /// * `remote` - The socket address (IP + port) to connect to
+    /// * `rx_buffer` - Buffer for incoming data (size determines max receive window)
+    /// * `tx_buffer` - Buffer for outgoing data (size determines max send window)
+    ///
+    /// # Returns
+    ///
+    /// A connected socket that borrows the provided buffers, or an error if
+    /// the connection could not be established.
+    async fn connect<'a>(
+        &'a self,
+        remote: SocketAddrV4,
+        rx_buffer: &'a mut [u8],
+        tx_buffer: &'a mut [u8],
+    ) -> Result<Self::Connection<'a>, Self::Error>;
+}
 
 use url::SimpleUrl;
 
@@ -108,11 +177,25 @@ mod url {
     }
 }
 
-impl<NET, V> BitTorrenter<NET, V>
+impl<NET, V, const RX: usize, const TX: usize> BitTorrenter<NET, V, RX, TX>
 where
-    NET: TcpConnect + Dns,
+    NET: TcpConnector + Dns,
     V: VolumeMgr,
 {
+    /// Send a request to the BitTorrent tracker and receive the response.
+    ///
+    /// This performs an HTTP GET request to the tracker's announce URL with
+    /// the required BitTorrent parameters (info_hash, peer_id, port, etc.).
+    ///
+    /// # Arguments
+    ///
+    /// * `metadata` - The parsed .torrent file containing the announce URL
+    /// * `rx_buf` - Buffer to store the tracker's bencoded response
+    ///
+    /// # Returns
+    ///
+    /// The number of bytes written to `rx_buf` (the response body only,
+    /// HTTP headers are stripped).
     pub async fn make_tracker_request(
         &mut self,
         metadata: &MetaInfoFile<'_>,
@@ -135,6 +218,10 @@ where
         Ok(bytes_written - body_start)
     }
 
+    /// Perform an HTTP GET request and read the response.
+    ///
+    /// Uses the internal socket buffers owned by `BitTorrenter` for the TCP
+    /// connection. The response (headers + body) is written to `rx_buf`.
     async fn make_http_request(
         &mut self,
         url: &SimpleUrl<'_>,
@@ -144,17 +231,28 @@ where
         let port = url.port().unwrap_or(80);
         let path = url.path();
 
-        // Resolve hostname to IP
+        // Resolve hostname to IP address using DNS (UDP-based, no buffers needed)
         let ip = self
             .net()
             .get_host_by_name(host, embedded_nal_async::AddrType::IPv4)
             .await
             .map_err(BitTorrenterError::DnsError)?;
 
-        // Connect to server
+        let ip = match ip {
+            core::net::IpAddr::V4(ipv4) => ipv4,
+            core::net::IpAddr::V6(_) => {
+                unreachable!("IPv6 not supported in this application, we only use IPv4 trackers")
+            }
+        };
+
+        // Connect to server using our owned socket buffers
         let mut tcp = self
-            .net()
-            .connect(SocketAddr::new(ip, port))
+            .net
+            .connect(
+                SocketAddrV4::new(ip, port),
+                &mut self.socket_buffers.rx,
+                &mut self.socket_buffers.tx,
+            )
             .await
             .map_err(BitTorrenterError::TcpError)?;
 
