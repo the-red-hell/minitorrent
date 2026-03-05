@@ -18,7 +18,7 @@ pub(crate) mod setup;
 /// Embassy-net uses different error types for connection (`ConnectError`)
 /// and I/O operations (`Error`). This wrapper unifies them for the
 /// `TcpConnector` trait which requires a single error type.
-#[derive(Debug)]
+#[derive(Debug, defmt::Format)]
 pub enum TcpError {
     /// Error during connection establishment (DNS, timeout, refused, etc.)
     Connect(embassy_net::tcp::ConnectError),
