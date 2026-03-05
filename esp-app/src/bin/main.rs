@@ -41,8 +41,8 @@ async fn main(spawner: Spawner) -> ! {
                     .unwrap();
             info!("WE GOT A TRACKER RESPONSE: {:?}", tracker_response);
         }
-        Err(_e) => {
-            info!("WE GOT AN ERROR FROM THE TRACKER");
+        Err(e) => {
+            info!("WE GOT AN ERROR FROM THE TRACKER {}", e);
         }
     }
 

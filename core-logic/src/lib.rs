@@ -44,11 +44,23 @@ pub use core::net::TcpConnector;
 /// // 8KB receive, 2KB transmit - larger buffers for faster transfers
 /// let buffers: SocketBuffers<8192, 2048> = SocketBuffers::new();
 /// ```
+#[derive(Debug)]
 pub struct SocketBuffers<const RX: usize, const TX: usize> {
     /// Buffer for incoming TCP data (receive window).
     pub rx: [u8; RX],
     /// Buffer for outgoing TCP data (send window).
     pub tx: [u8; TX],
+}
+
+impl defmt::Format for SocketBuffers<4096, 1024> {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(
+            f,
+            "SocketBuffers {{ rx: [{} bytes], tx: [{} bytes] }}",
+            self.rx.len(),
+            self.tx.len()
+        );
+    }
 }
 
 impl<const RX: usize, const TX: usize> SocketBuffers<RX, TX> {
@@ -100,6 +112,7 @@ impl<const RX: usize, const TX: usize> Default for SocketBuffers<RX, TX> {
 /// // Create with custom buffer sizes
 /// let client: BitTorrenter<MyNet, MyVolMgr, 8192, 2048> = BitTorrenter::new(net, fs);
 /// ```
+#[derive(Debug, defmt::Format)]
 pub struct BitTorrenter<NET, V, const RX: usize = 4096, const TX: usize = 1024>
 where
     NET: TcpConnector + Dns,
@@ -163,7 +176,7 @@ where
 ///
 /// This enum wraps errors from the network stack (DNS/TCP) and file system,
 /// allowing callers to handle them uniformly.
-#[derive(Debug)]
+#[derive(Debug, defmt::Format)]
 pub enum BitTorrenterError<NET, V>
 where
     NET: TcpConnector + Dns,
