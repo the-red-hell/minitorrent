@@ -31,15 +31,10 @@ async fn main(spawner: Spawner) -> ! {
     info!("WE GOT THE TORRENT WITH: {:?}", torrent);
 
     let mut rx_buf = [0u8; 1024];
-    let res = bittorrenter
-        .make_tracker_request(&torrent, &mut rx_buf)
-        .await;
+    let res = bittorrenter.into_downloader(&torrent, &mut rx_buf).await;
     match res {
-        Ok(bytes_written) => {
-            let tracker_response =
-                core_logic::core::tracker::TrackerResponse::parse(&rx_buf[..bytes_written])
-                    .unwrap();
-            info!("WE GOT A TRACKER RESPONSE: {:?}", tracker_response);
+        Ok(downloader) => {
+            info!("WE GOT A TRACKER RESPONSE: {:?}", downloader.get_peers());
         }
         Err(e) => {
             info!("WE GOT AN ERROR FROM THE TRACKER {}", e);
