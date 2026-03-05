@@ -1,6 +1,8 @@
 pub mod error;
+pub mod states;
 use embedded_nal_async::Dns;
 
+use crate::bittorrenter::states::RequestingTracker;
 use crate::net::buffer::SocketBuffers;
 use crate::{
     TcpConnector,
@@ -34,15 +36,20 @@ use crate::{
 /// let client: BitTorrenter<MyNet, MyVolMgr, 8192, 2048> = BitTorrenter::new(net, fs);
 /// ```
 #[derive(Debug, defmt::Format)]
-pub struct BitTorrenter<NET, V, const RX: usize = 4096, const TX: usize = 1024>
-where
+pub struct BitTorrenter<
+    NET,
+    V,
+    STATE = RequestingTracker,
+    const RX: usize = 4096,
+    const TX: usize = 1024,
+> where
     NET: TcpConnector + Dns,
     V: VolumeMgr,
 {
     /// Network implementation for DNS and TCP.
     pub(crate) net: NET,
     /// File system for torrent data.
-    fs: FileSystem<V>,
+    pub(crate) fs: FileSystem<V>,
     /// Pre-allocated socket buffers owned by this client.
     /// Only one TCP connection can be active at a time.
     pub(crate) socket_buffers: SocketBuffers<RX, TX>,
@@ -50,9 +57,21 @@ where
     pub(crate) peer_id: [u8; 20],
     /// Port number this client listens on for incoming peer connections.
     pub(crate) port: u16,
+    pub(crate) state: STATE,
 }
 
-impl<NET, V, const RX: usize, const TX: usize> BitTorrenter<NET, V, RX, TX>
+impl<NET, V, STATE, const RX: usize, const TX: usize> BitTorrenter<NET, V, STATE, RX, TX>
+where
+    NET: TcpConnector + Dns,
+    V: VolumeMgr,
+{
+    /// Get mutable access to the file system.
+    pub fn fs(&mut self) -> &mut FileSystem<V> {
+        &mut self.fs
+    }
+}
+
+impl<NET, V, const RX: usize, const TX: usize> BitTorrenter<NET, V, RequestingTracker, RX, TX>
 where
     NET: TcpConnector + Dns,
     V: VolumeMgr,
@@ -75,11 +94,7 @@ where
             socket_buffers: SocketBuffers::new(),
             peer_id: [0u8; 20],
             port: 6881,
+            state: RequestingTracker,
         }
-    }
-
-    /// Get mutable access to the file system.
-    pub fn fs(&mut self) -> &mut FileSystem<V> {
-        &mut self.fs
     }
 }

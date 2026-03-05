@@ -2,6 +2,7 @@ use ::core::fmt::Write as _;
 use heapless::String;
 
 pub(crate) mod buffer;
+mod downloader;
 pub mod tcp;
 mod tracker_requesting;
 mod url;

@@ -9,7 +9,7 @@ pub mod volume_mgr;
 
 /// Initializes the SD Card.
 /// Creates a Volume Manager with this SD Card.
-/// You can optain the FileSystem by calling `FileSystem::new()`.
+/// You can obtain the FileSystem by calling `FileSystem::new()`.
 pub async fn initialize_esp_fs<SPI, SCK, MISO, MOSI, CS>(
     initializer: SPIInitializer<SCK, MISO, MOSI, CS>,
     spi: SPI,

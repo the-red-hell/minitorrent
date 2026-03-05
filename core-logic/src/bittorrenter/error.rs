@@ -21,4 +21,6 @@ where
     TcpError(<NET as TcpConnector>::Error),
     /// File system operation failed.
     FsError(<<V as VolumeMgr>::BlockDevice as BlockDevice>::Error),
+    /// Failed to parse the tracker's response (e.g., invalid bencoding).
+    TrackerResponseParseError,
 }

@@ -5,20 +5,81 @@ use embedded_nal_async::Dns;
 use heapless::string::String;
 
 use crate::{
-    BitTorrenter, BitTorrenterError, MetaInfoFile, TcpConnector, core::tracker::TrackerRequest,
-    fs::VolumeMgr, net::url::SimpleUrl,
+    BitTorrenter, BitTorrenterError, MetaInfoFile, TcpConnector,
+    bittorrenter::states::{Downloading, RequestingTracker},
+    core::tracker::{TrackerRequest, TrackerResponse},
+    fs::VolumeMgr,
+    net::url::SimpleUrl,
 };
 
-impl<NET, V, const RX: usize, const TX: usize> BitTorrenter<NET, V, RX, TX>
+impl<NET, V, const RX: usize, const TX: usize> BitTorrenter<NET, V, RequestingTracker, RX, TX>
 where
     NET: TcpConnector + Dns,
     V: VolumeMgr,
 {
+    pub async fn into_downloader(
+        mut self,
+        metadata: &MetaInfoFile<'_>,
+        rx_buf: &mut [u8],
+    ) -> Result<BitTorrenter<NET, V, Downloading, RX, TX>, BitTorrenterError<NET, V>> {
+        let bytes_written = self.make_tracker_request(metadata, rx_buf).await?;
+        // Here you would typically parse the tracker's response and transition to the next state
+        // For this example, we'll just log the raw response
+        let tracker_response = TrackerResponse::parse(&rx_buf[..bytes_written])
+            .map_err(|_| BitTorrenterError::TrackerResponseParseError)?;
+
+        defmt::info!("Received tracker response: {:?}", tracker_response);
+
+        Ok(BitTorrenter {
+            net: self.net,
+            fs: self.fs,
+            socket_buffers: self.socket_buffers,
+            peer_id: self.peer_id,
+            port: self.port,
+            state: Downloading::new(tracker_response.peers),
+        })
+    }
+    /// Send a request to the BitTorrent tracker and receive the response.
+    ///
+    /// This performs an HTTP GET request to the tracker's announce URL with
+    /// the required BitTorrent parameters (info_hash, peer_id, port, etc.).
+    ///
+    /// # Arguments
+    ///
+    /// * `metadata` - The parsed .torrent file containing the announce URL
+    /// * `rx_buf` - Buffer to store the tracker's bencoded response
+    ///
+    /// # Returns
+    ///
+    /// The number of bytes written to `rx_buf` (the response body only,
+    /// HTTP headers are stripped).
+    pub async fn make_tracker_request(
+        &mut self,
+        metadata: &MetaInfoFile<'_>,
+        rx_buf: &mut [u8],
+    ) -> Result<usize, BitTorrenterError<NET, V>> {
+        let mut url = SimpleUrl::parse(metadata.announce).expect("Could not parse URL");
+        let tracker_request = TrackerRequest::new(
+            &metadata.info_hash,
+            &self.peer_id,
+            self.port,
+            metadata.info.length,
+        );
+        let query = tracker_request.to_url_encoded();
+        url.set_query(Some(&query));
+        let bytes_written = self.make_http_request(&url, rx_buf).await?;
+
+        // Move the body of the HTTP response to the beginning of the buffer
+        let body_start = http_header_end_pos(&rx_buf[..bytes_written]);
+        rx_buf.copy_within(body_start..bytes_written, 0);
+        Ok(bytes_written - body_start)
+    }
+
     /// Perform an HTTP GET request and read the response.
     ///
     /// Uses the internal socket buffers owned by `BitTorrenter` for the TCP
     /// connection. The response (headers + body) is written to `rx_buf`.
-    pub(in crate::net) async fn make_http_request(
+    async fn make_http_request(
         &mut self,
         url: &SimpleUrl<'_>,
         rx_buf: &mut [u8],
@@ -74,42 +135,6 @@ where
 
         // Read response
         tcp.read(rx_buf).await.map_err(BitTorrenterError::TcpError)
-    }
-
-    /// Send a request to the BitTorrent tracker and receive the response.
-    ///
-    /// This performs an HTTP GET request to the tracker's announce URL with
-    /// the required BitTorrent parameters (info_hash, peer_id, port, etc.).
-    ///
-    /// # Arguments
-    ///
-    /// * `metadata` - The parsed .torrent file containing the announce URL
-    /// * `rx_buf` - Buffer to store the tracker's bencoded response
-    ///
-    /// # Returns
-    ///
-    /// The number of bytes written to `rx_buf` (the response body only,
-    /// HTTP headers are stripped).
-    pub async fn make_tracker_request(
-        &mut self,
-        metadata: &MetaInfoFile<'_>,
-        rx_buf: &mut [u8],
-    ) -> Result<usize, BitTorrenterError<NET, V>> {
-        let mut url = SimpleUrl::parse(metadata.announce).expect("Could not parse URL");
-        let tracker_request = TrackerRequest::new(
-            &metadata.info_hash,
-            &self.peer_id,
-            self.port,
-            metadata.info.length,
-        );
-        let query = tracker_request.to_url_encoded();
-        url.set_query(Some(&query));
-        let bytes_written = self.make_http_request(&url, rx_buf).await?;
-
-        // Move the body of the HTTP response to the beginning of the buffer
-        let body_start = http_header_end_pos(&rx_buf[..bytes_written]);
-        rx_buf.copy_within(body_start..bytes_written, 0);
-        Ok(bytes_written - body_start)
     }
 }
 
