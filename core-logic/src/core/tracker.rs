@@ -1,4 +1,7 @@
-use crate::core::{InfoHash, PeerId, net::percent_encode};
+use crate::{
+    core::{InfoHash, PeerId},
+    net::percent_encode,
+};
 use alloc::string::String;
 use core::fmt::Write;
 use heapless::Vec;
