@@ -4,7 +4,7 @@ use heapless::String;
 pub(crate) mod buffer;
 mod downloader;
 pub mod tcp;
-mod tracker_requesting;
+mod tracker_requester;
 mod url;
 
 pub(crate) fn percent_encode(bytes: &[u8]) -> String<60> {
