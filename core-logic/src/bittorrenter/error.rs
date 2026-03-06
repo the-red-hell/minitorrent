@@ -23,4 +23,6 @@ where
     FsError(<<V as VolumeMgr>::BlockDevice as BlockDevice>::Error),
     /// Failed to parse the tracker's response (e.g., invalid bencoding).
     TrackerResponseParseError,
+    /// Failed to perform the BitTorrent handshake with a peer.
+    HandshakeFailed,
 }
