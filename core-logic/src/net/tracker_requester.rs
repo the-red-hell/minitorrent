@@ -19,10 +19,10 @@ where
 {
     pub async fn into_downloader(
         mut self,
-        metadata: &MetaInfoFile<'_>,
+        metainfo: &MetaInfoFile<'_>,
         rx_buf: &mut [u8],
     ) -> Result<BitTorrenter<NET, V, Downloading, RX, TX>, BitTorrenterError<NET, V>> {
-        let bytes_written = self.make_tracker_request(metadata, rx_buf).await?;
+        let bytes_written = self.make_tracker_request(metainfo, rx_buf).await?;
         // Here you would typically parse the tracker's response and transition to the next state
         // For this example, we'll just log the raw response
         let tracker_response = TrackerResponse::parse(&rx_buf[..bytes_written])
@@ -36,7 +36,7 @@ where
             socket_buffers: self.socket_buffers,
             peer_id: self.peer_id,
             port: self.port,
-            state: Downloading::new(tracker_response.peers),
+            state: Downloading::new(tracker_response.peers, metainfo),
         })
     }
     /// Send a request to the BitTorrent tracker and receive the response.

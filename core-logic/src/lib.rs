@@ -6,6 +6,7 @@ pub mod bittorrenter;
 pub mod core;
 pub mod fs;
 pub mod net;
+mod peer;
 
 pub use bittorrenter::{BitTorrenter, error::BitTorrenterError};
 pub use core::metainfo::{Info, MetaInfoFile};
