@@ -7,7 +7,12 @@ So the next logical thing to do is: implementing a BitTorrent-Client on that thi
 
 - [ESP32C3-Supermini](https://www.espboards.dev/esp32/esp32-c3-super-mini-plus/)
 - SD-Card-Reader via SPI ([something like this](https://www.amazon.com/HiLetgo-Adater-Interface-Conversion-Arduino/dp/B07BJ2P6X6))
-- a capacitor (works better with than without, Gemini told me)
+- a capacitor (works better with than without, Gemini told me): specifically a 10µF one between VCC and 5V
+
+In the following picture you can see the components:
+![Hardware](https://github.com/user-attachments/assets/f64c130d-118f-47b2-8a67-9908ddafe92b)
+(top left: SD-Card-Reader with SD-Card, top right: ESP32C3-Supermini, bottom: 10µF capacitor)
+
 
 ## Project-Structure
 
