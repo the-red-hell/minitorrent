@@ -13,6 +13,32 @@ In the following picture you can see the components:
 ![Hardware](https://github.com/user-attachments/assets/f64c130d-118f-47b2-8a67-9908ddafe92b)
 (top left: SD-Card-Reader with SD-Card, top right: ESP32C3-Supermini, bottom: 10µF capacitor)
 
+### Pinout
+
+| ESP32C3 Pin | SPI Function | SD Card Module Pin |
+|:-----------:|:------------:|:------------------:|
+| GPIO4       | SCK          | CLK                |
+| GPIO5       | MISO         | DO (MISO)          |
+| GPIO6       | MOSI         | DI (MOSI)          |
+| GPIO7       | CS           | CS                 |
+| 5V          | —            | VCC                |
+| GND         | —            | GND                |
+
+> **Note:** A 10µF capacitor is placed between VCC and 5V for stability.
+
+```
+ESP32C3-Supermini          SD Card Module
+┌──────────┐               ┌──────────┐
+│      GPIO4 ──── SCK ────── CLK      │
+│      GPIO5 ──── MISO ───── DO       │
+│      GPIO6 ──── MOSI ───── DI       │
+│      GPIO7 ──── CS ─────── CS       │
+│          5V ──┬─────────── VCC      │
+│               ┊ (10µF cap)          │
+│         GND ──┴─────────── GND      │
+└──────────┘               └──────────┘
+```
+
 
 ## Project-Structure
 
