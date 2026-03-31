@@ -4,20 +4,15 @@ use embedded_io_async::{Read, Write};
 
 /// A trait for establishing TCP connections where the **caller provides buffers**.
 ///
-/// # Motivation
-///
 /// Unlike `embedded_nal_async::TcpConnect`, this trait accepts mutable buffer
-/// references as parameters. This design avoids interior mutability (RefCell,
-/// Mutex) in the network implementation, which is important for:
-///
-/// - **Embedded systems**: No runtime overhead from borrow checking or locking
-/// - **Clear ownership**: The caller (e.g., `BitTorrenter`) owns the buffers
-/// - **Flexible buffer sizes**: Different callers can provide different buffer sizes
+/// references as parameters. It avoids interior mutability (RefCell,
+/// Mutex) in the network implementation, which better for embedded single-threaded
+/// applications where you don't have too much resources.
 ///
 /// # Buffer Lifetimes
 ///
 /// The returned `Connection` borrows from the buffers, so the connection cannot
-/// outlive them. This is enforced at compile time.
+/// outlive them.
 ///
 /// # Example
 ///
