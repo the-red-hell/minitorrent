@@ -15,11 +15,11 @@ pub(crate) async fn wifi_setup(
 ) -> EspWifi {
     let wifi = EspWifi::initialize(spawner, wifi_peripheral).await;
 
-    wifi.stack.wait_link_up().await;
+    wifi.stack().wait_link_up().await;
 
     debug!("Waiting to get IP address...");
     loop {
-        if let Some(config) = wifi.stack.config_v4() {
+        if let Some(config) = wifi.stack().config_v4() {
             info!("Got IP: {}", config.address);
             break;
         }
