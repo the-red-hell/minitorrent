@@ -25,10 +25,20 @@ where
             self.state.get_peers()[0],
         )
         .await?;
-        let _peer = peer
+        let handshake_peer = peer
             .into_handshake_performed(self.state.get_info_hash())
             .await
             .map_err(|_| BitTorrenterError::HandshakeFailed)?;
+
+        let interested_peer = handshake_peer
+            .send_interested()
+            .await
+            .map_err(BitTorrenterError::TcpError)?;
+
+        let unchoked_peer = interested_peer
+            .wait_for_unchoke()
+            .await
+            .map_err(BitTorrenterError::TcpError)?;
         Ok(())
     }
 }
