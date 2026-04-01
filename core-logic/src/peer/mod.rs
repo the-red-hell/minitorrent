@@ -1,14 +1,17 @@
 use ::core::marker::PhantomData;
 
 use crate::{TcpConnector, core::PeerId};
+pub mod event_loop;
 mod handshake;
+mod messages;
 
+pub const BLOCK_SIZE: usize = 16 * 1024; // 16KB
 const PEER_ID: PeerId = *b"AwesomeESP32C3Client";
 
 /// A Peer in the BitTorrent protocol, parameterized by its handshake, choke, and interest states.
 ///
 /// Flow:
-///     NotHandshaken -> Handshaken (via peer.perform_handshake())
+///     NotHandshaken -> Handshaken (via peer.into_handshake_performed())
 ///     Choked <-> Unchoked
 ///     Interested <-> NotInterested
 ///     
