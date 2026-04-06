@@ -1,4 +1,3 @@
-#[cfg(feature = "defmt")]
 use crate::core::InfoHash;
 use bencode::{BencodeParser, Error, Result};
 
