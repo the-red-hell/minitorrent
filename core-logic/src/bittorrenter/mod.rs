@@ -35,7 +35,8 @@ use crate::{
 /// // Create with custom buffer sizes
 /// let client: BitTorrenter<MyNet, MyVolMgr, 8192, 2048> = BitTorrenter::new(net, fs);
 /// ```
-#[derive(Debug, defmt::Format)]
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct BitTorrenter<
     NET,
     V,

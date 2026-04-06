@@ -28,6 +28,7 @@ where
         let tracker_response = TrackerResponse::parse(&rx_buf[..bytes_written])
             .map_err(|_| BitTorrenterError::TrackerResponseParseError)?;
 
+        #[cfg(feature = "defmt")]
         defmt::info!("Received tracker response: {:?}", tracker_response);
 
         Ok(BitTorrenter {

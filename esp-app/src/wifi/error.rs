@@ -36,10 +36,10 @@ impl From<embassy_net::tcp::Error> for TcpError {
     }
 }
 
-impl embedded_io::Error for TcpError {
-    fn kind(&self) -> embedded_io::ErrorKind {
+impl embedded_io_async::Error for TcpError {
+    fn kind(&self) -> embedded_io_async::ErrorKind {
         match self {
-            TcpError::Connect(_) => embedded_io::ErrorKind::ConnectionRefused,
+            TcpError::Connect(_) => embedded_io_async::ErrorKind::ConnectionRefused,
             TcpError::Io(e) => e.kind(),
         }
     }

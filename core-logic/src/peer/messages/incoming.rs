@@ -1,6 +1,7 @@
 use heapless::Vec;
 
 use crate::peer::messages::{PeerMessageTypes, error::MessageError};
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum PeerMessage<'a> {
     KeepAlive,
     Choke,
@@ -45,7 +46,7 @@ impl<'a> PeerMessage<'a> {
     /// we will mostly send 13 bytes, only for the piece, more is required
     /// note that piece messages are currently not supported, let's see how we'll handle them
     /// TODO: piece messages
-    pub(crate) fn into_bytes(&self) -> Vec<u8, 13> {
+    pub(crate) fn as_bytes(&self) -> Vec<u8, 13> {
         let mut bytes = Vec::<u8, 13>::new();
 
         // first byte is the message type
@@ -119,7 +120,7 @@ fn parse_have_message<'a>(data: &'a [u8]) -> Result<PeerMessage<'a>, MessageErro
     Ok(PeerMessage::Have(piece_index))
 }
 
-fn parse_bitfield_message<'a>(data: &'a [u8]) -> Result<PeerMessage<'a>, MessageError> {
+fn parse_bitfield_message<'a>(_data: &'a [u8]) -> Result<PeerMessage<'a>, MessageError> {
     todo!("Bitfield message parsing not implemented yet");
 }
 

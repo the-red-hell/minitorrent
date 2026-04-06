@@ -14,6 +14,8 @@ impl<'a, NET> Peer<'a, NET, Handshaken, Choked, NotInterested>
 where
     NET: TcpConnector + 'a,
 {
+    /// Sends an interested message to the peer, indicating that we want to download pieces.
+    #[inline]
     pub(crate) async fn send_interested(
         mut self,
     ) -> Result<Peer<'a, NET, Handshaken, Choked, Interested>, NET::Error> {
@@ -21,7 +23,7 @@ where
 
         let interested_msg = PeerMessage::Interested;
         self.connection()
-            .write_all(&interested_msg.into_bytes())
+            .write_all(&interested_msg.as_bytes())
             .await?;
 
         Ok(Peer {
@@ -37,6 +39,8 @@ impl<'a, NET> Peer<'a, NET, Handshaken, Choked, Interested>
 where
     NET: TcpConnector + 'a,
 {
+    /// Waits for an unchoke message from the peer. This indicates that the peer is now willing to send data.
+    #[inline]
     pub(crate) async fn wait_for_unchoke(
         mut self,
     ) -> Result<Peer<'a, NET, Handshaken, Unchoked, Interested>, NET::Error> {

@@ -14,6 +14,7 @@ where
 {
     /// Performs the BitTorrent handshake with the peer.
     /// Returns a new `Peer` instance in the `Handshaken` state if successful.
+    #[inline]
     pub(crate) async fn into_handshake_performed(
         mut self,
         info_hash: &InfoHash,
@@ -36,6 +37,8 @@ where
             handshake_msg[28..48],
             "Handshake info_hash does not match the sent handshake"
         );
+
+        // TODO: send bitfield?
 
         Ok(Peer {
             connection: self.connection,

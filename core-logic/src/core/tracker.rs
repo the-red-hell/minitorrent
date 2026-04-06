@@ -58,6 +58,7 @@ pub struct TrackerResponse {
     pub peers: Vec<core::net::SocketAddrV4, 10>,
 }
 
+#[cfg(feature = "defmt")]
 impl defmt::Format for TrackerResponse {
     fn format(&self, fmt: defmt::Formatter) {
         defmt::write!(
