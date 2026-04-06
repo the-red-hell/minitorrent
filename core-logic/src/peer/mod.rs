@@ -55,17 +55,17 @@ where
     }
 }
 
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub(super) struct Choked;
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub(super) struct Unchoked;
 
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub(super) struct Interested;
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub(super) struct NotInterested;
 
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub(super) struct Handshaken;
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub(super) struct NotHandshaken;

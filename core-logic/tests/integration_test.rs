@@ -7,6 +7,7 @@ mod wifi_helper;
 
 #[tokio::test]
 async fn integration_test() {
+    env_logger::init();
     let mut bittorrenter = init_bittorrenter();
     let torrent = bittorrenter.fs().get_torrent_from_file().await.unwrap();
     let metadata = MetaInfoFile::parse(&torrent).unwrap();

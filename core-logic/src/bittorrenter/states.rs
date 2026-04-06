@@ -4,7 +4,7 @@ use crate::MetaInfoFile;
 
 pub struct RequestingTracker;
 
-#[derive(Debug)]
+#[cfg_attr(feature = "log", derive(Debug))]
 pub struct Downloading {
     peers: heapless::Vec<core::net::SocketAddrV4, 10>,
     info_hash: [u8; 20],
@@ -43,5 +43,5 @@ impl Downloading {
     }
 }
 
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub struct _Seeding;

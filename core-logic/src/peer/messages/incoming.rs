@@ -1,7 +1,8 @@
 use heapless::Vec;
 
 use crate::peer::messages::{PeerMessageTypes, error::MessageError};
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+
+#[defmt_or_log::derive_format_or_debug]
 pub enum PeerMessage<'a> {
     KeepAlive,
     Choke,

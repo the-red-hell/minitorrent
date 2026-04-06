@@ -18,12 +18,11 @@ where
     }
 
     pub async fn download(&mut self) -> Result<(), BitTorrenterError<NET, V>> {
-        #[cfg(feature = "defmt")]
-        defmt::info!("Starting download...");
+        defmt_or_log::info!("Starting download...");
         let peer = connect_to_peer(
             &mut self.net,
             &mut self.socket_buffers,
-            self.state.get_peers()[0],
+            self.state.get_peers()[2],
         )
         .await?;
         let handshake_peer = peer
@@ -40,6 +39,11 @@ where
             .wait_for_unchoke()
             .await
             .map_err(BitTorrenterError::TcpError)?;
+
+        let _finished_peer = unchoked_peer
+            .download_file(self.state.get_piece_length(), self.state.get_total_length())
+            .await
+            .map_err(BitTorrenterError::TcpError)?;
         Ok(())
     }
 }
@@ -53,18 +57,12 @@ where
     NET: TcpConnector + Dns,
     V: VolumeMgr,
 {
-    #[cfg(feature = "defmt")]
-    defmt::info!("Connecting to peer at: {:?}", peer_addr);
-    #[cfg(test)]
-    println!("Connecting to peer at: {:?}", peer_addr);
+    defmt_or_log::info!("Connecting to peer at: {:?}", peer_addr);
     let conn = net
         .connect(peer_addr, &mut socket_buffers.rx, &mut socket_buffers.tx)
         .await
         .map_err(BitTorrenterError::TcpError)?;
 
-    #[cfg(feature = "defmt")]
-    defmt::info!("Connected to peer at: {:?}", peer_addr);
-    #[cfg(test)]
-    println!("Connected to peer at: {:?}", peer_addr);
+    defmt_or_log::info!("Connected to peer at: {:?}", peer_addr);
     Ok(Peer::new(conn))
 }

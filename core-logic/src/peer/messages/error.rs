@@ -1,5 +1,4 @@
-#[derive(Debug)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[defmt_or_log::derive_format_or_debug]
 pub enum MessageError {
     InvalidMessage,
     InvalidLength,
