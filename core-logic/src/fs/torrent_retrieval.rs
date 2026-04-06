@@ -23,9 +23,11 @@ where
                     && name.ends_with("torrent")
                     && file_name.is_none()
                 {
+                    #[cfg(feature = "defmt")]
                     defmt::trace!("found torrent: {}", name);
                     file_name = Some(dir.name.clone());
                 } else {
+                    #[cfg(feature = "defmt")]
                     defmt::trace!("found file to ignore: {}", name);
                 }
             })
@@ -44,6 +46,7 @@ where
             self.read_to_end(&mut buf)
                 .await
                 .expect("Couldn't read file");
+            #[cfg(feature = "defmt")]
             defmt::info!("Using torrent-file {}", file_name.to_string().as_str());
             Some(buf)
         } else {

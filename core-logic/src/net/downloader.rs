@@ -18,6 +18,7 @@ where
     }
 
     pub async fn download(&mut self) -> Result<(), BitTorrenterError<NET, V>> {
+        #[cfg(feature = "defmt")]
         defmt::info!("Starting download...");
         let peer = connect_to_peer(
             &mut self.net,
@@ -52,11 +53,18 @@ where
     NET: TcpConnector + Dns,
     V: VolumeMgr,
 {
+    #[cfg(feature = "defmt")]
+    defmt::info!("Connecting to peer at: {:?}", peer_addr);
+    #[cfg(test)]
+    println!("Connecting to peer at: {:?}", peer_addr);
     let conn = net
         .connect(peer_addr, &mut socket_buffers.rx, &mut socket_buffers.tx)
         .await
         .map_err(BitTorrenterError::TcpError)?;
 
+    #[cfg(feature = "defmt")]
     defmt::info!("Connected to peer at: {:?}", peer_addr);
+    #[cfg(test)]
+    println!("Connected to peer at: {:?}", peer_addr);
     Ok(Peer::new(conn))
 }

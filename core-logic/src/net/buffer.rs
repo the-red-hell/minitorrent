@@ -32,6 +32,7 @@ pub(crate) struct SocketBuffers<const RX: usize, const TX: usize> {
     pub(crate) tx: [u8; TX],
 }
 
+#[cfg(feature = "defmt")]
 impl<const RX: usize, const TX: usize> defmt::Format for SocketBuffers<RX, TX> {
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(

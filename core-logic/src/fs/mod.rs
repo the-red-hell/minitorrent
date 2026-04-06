@@ -31,7 +31,8 @@ pub trait FileSystemExt {
 /// Struct to provide an abstraction over the filesystem.
 /// It can do basic operations like opening files and directories,
 /// but if you want more, you'll probably have to use the `embedded_sdmmc::VolumeManager::...` methods.
-#[derive(Debug, defmt::Format)]
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct FileSystem<V>
 where
     V: VolumeMgr,

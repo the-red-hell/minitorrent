@@ -4,7 +4,7 @@ use std::{
 };
 
 use core_logic::TcpConnector;
-use embedded_io::ErrorType;
+use embedded_io_async::ErrorType;
 use embedded_nal_async::{AddrType, Dns};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -125,17 +125,17 @@ impl std::error::Error for WifiError {
     }
 }
 
-impl embedded_io::Error for WifiError {
-    fn kind(&self) -> embedded_io::ErrorKind {
-        embedded_io::ErrorKind::Other
+impl embedded_io_async::Error for WifiError {
+    fn kind(&self) -> embedded_io_async::ErrorKind {
+        embedded_io_async::ErrorKind::Other
     }
 }
 
-impl defmt::Format for WifiError {
-    fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(fmt, "WifiError: {:?}", defmt::Debug2Format(&self.0));
-    }
-}
+// impl defmt::Format for WifiError {
+//     fn format(&self, fmt: defmt::Formatter) {
+//         defmt::write!(fmt, "WifiError: {:?}", defmt::Debug2Format(&self.0));
+//     }
+// }
 
 impl From<std::io::Error> for WifiError {
     fn from(err: std::io::Error) -> Self {

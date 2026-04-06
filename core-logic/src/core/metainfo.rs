@@ -1,16 +1,17 @@
-use bencode::{BencodeParser, Error, Result};
-use defmt::Format;
-
+#[cfg(feature = "defmt")]
 use crate::core::InfoHash;
+use bencode::{BencodeParser, Error, Result};
 
-#[derive(Debug, PartialEq, Format)]
+#[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct MetaInfoFile<'a> {
     pub announce: &'a str,
     pub info: Info<'a>,
     pub info_hash: [u8; 20],
 }
 
-#[derive(Debug, PartialEq, Format)]
+#[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Info<'a> {
     pub piece_length: u32,
     pub name: &'a str,
