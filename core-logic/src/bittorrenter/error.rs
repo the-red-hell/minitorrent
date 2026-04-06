@@ -9,8 +9,7 @@ use crate::{TcpConnector, fs::VolumeMgr};
 ///
 /// This enum wraps errors from the network stack (DNS/TCP) and file system,
 /// allowing callers to handle them uniformly.
-#[derive(Debug)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[defmt_or_log::derive_format_or_debug]
 pub enum BitTorrenterError<NET, V>
 where
     NET: TcpConnector + Dns,

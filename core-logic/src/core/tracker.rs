@@ -6,7 +6,8 @@ use alloc::string::String;
 use core::fmt::Write;
 use heapless::Vec;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+#[defmt_or_log::derive_format_or_debug]
 pub struct TrackerRequest<'a> {
     /// the info hash of the torrent
     pub info_hash: &'a InfoHash,
@@ -52,22 +53,10 @@ impl<'a> TrackerRequest<'a> {
     }
 }
 
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub struct TrackerResponse {
     pub interval: u32,
     pub peers: Vec<core::net::SocketAddrV4, 10>,
-}
-
-#[cfg(feature = "defmt")]
-impl defmt::Format for TrackerResponse {
-    fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(
-            fmt,
-            "TrackerResponse {{ interval: {}, peers: {:?} }}",
-            self.interval,
-            defmt::Debug2Format(&self.peers)
-        );
-    }
 }
 
 mod tracker_response_parser {

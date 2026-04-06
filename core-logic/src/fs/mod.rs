@@ -7,7 +7,7 @@ pub use volume_mgr::VolumeMgr;
 
 /// A trait that provides some common operations for the filesystem.
 /// This is mainly for the abstraction between my own filesystem implementation and `embedded_sdmmc`
-/// (my code - `FileSystemExt`` - embedded_sdmmc)
+/// (my code - `FileSystemExt` - embedded_sdmmc)
 /// This is still depended on embedded_sdmmc for the open-mode, but making an enum for it shouldn't be too hard.
 /// I won't do this as as long as there's no async embedded-sdmmc implementation.
 #[allow(async_fn_in_trait)]
@@ -31,8 +31,7 @@ pub trait FileSystemExt {
 /// Struct to provide an abstraction over the filesystem.
 /// It can do basic operations like opening files and directories,
 /// but if you want more, you'll probably have to use the `embedded_sdmmc::VolumeManager::...` methods.
-#[derive(Debug)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[defmt_or_log::derive_format_or_debug]
 pub struct FileSystem<V>
 where
     V: VolumeMgr,

@@ -43,6 +43,7 @@ async fn test_write_file() {
 
 #[test]
 fn list_directories() {
+    env_logger::init();
     let fs_duple = init_fs_duple();
 
     let root_dir = fs_duple
@@ -60,12 +61,12 @@ pub fn list_dir(
     directory: Directory<'_, LinuxBlockDevice, Clock, 4, 4, 1>,
     path: &str,
 ) -> Result<(), Error<<LinuxBlockDevice as embedded_sdmmc::BlockDevice>::Error>> {
-    println!("Listing {}", path);
+    log::info!("Listing {}", path);
     let mut children = Vec::new();
     directory.iterate_dir(|entry| {
-        println!(
+        log::info!(
             "{:12} {:9} {} {}",
-            entry.name,
+            &entry.name,
             entry.size,
             entry.mtime,
             if entry.attributes.is_directory() {

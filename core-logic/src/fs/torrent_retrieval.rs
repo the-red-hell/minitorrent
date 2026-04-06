@@ -23,12 +23,10 @@ where
                     && name.ends_with("torrent")
                     && file_name.is_none()
                 {
-                    #[cfg(feature = "defmt")]
-                    defmt::trace!("found torrent: {}", name);
+                    defmt_or_log::trace!("found torrent: {}", name);
                     file_name = Some(dir.name.clone());
                 } else {
-                    #[cfg(feature = "defmt")]
-                    defmt::trace!("found file to ignore: {}", name);
+                    defmt_or_log::trace!("found file to ignore: {:?}", name);
                 }
             })
             .expect("Couldn't iterate dir");
@@ -46,8 +44,7 @@ where
             self.read_to_end(&mut buf)
                 .await
                 .expect("Couldn't read file");
-            #[cfg(feature = "defmt")]
-            defmt::info!("Using torrent-file {}", file_name.to_string().as_str());
+            defmt_or_log::info!("Using torrent-file {}", file_name.to_string().as_str());
             Some(buf)
         } else {
             None

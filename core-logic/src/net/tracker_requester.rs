@@ -22,14 +22,23 @@ where
         metainfo: &MetaInfoFile<'_>,
         rx_buf: &mut [u8],
     ) -> Result<BitTorrenter<NET, V, Downloading, RX, TX>, BitTorrenterError<NET, V>> {
+        #[cfg(feature = "defmt")]
+        defmt::trace!(
+            "Requesting tracker with info_hash: {:x}",
+            metainfo.info_hash
+        );
+        #[cfg(feature = "log")]
+        log::trace!(
+            "Requesting tracker with info_hash: {:x?}",
+            metainfo.info_hash
+        );
         let bytes_written = self.make_tracker_request(metainfo, rx_buf).await?;
         // Here you would typically parse the tracker's response and transition to the next state
         // For this example, we'll just log the raw response
         let tracker_response = TrackerResponse::parse(&rx_buf[..bytes_written])
             .map_err(|_| BitTorrenterError::TrackerResponseParseError)?;
 
-        #[cfg(feature = "defmt")]
-        defmt::info!("Received tracker response: {:?}", tracker_response);
+        defmt_or_log::info!("Received tracker response: {:?}", tracker_response);
 
         Ok(BitTorrenter {
             net: self.net,
