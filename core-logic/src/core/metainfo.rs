@@ -42,7 +42,7 @@ impl<'a> MetaInfoFile<'a> {
                     info_hash = sha1_smol::Sha1::from(info_bytes).digest().bytes();
                     info = Some(Info::parse(info_bytes)?);
                     // Now let's say I'm lazy to come up with anything else and
-                    // assume that the 'announce' key always comes first.
+                    // TODO: assuming that the 'announce' key always comes first.
                     break; // We're not interested in anything else.
                 }
                 _ => {
@@ -78,7 +78,7 @@ impl<'a> Info<'a> {
 
             match key {
                 "pieces" => {
-                    let piece_chunks = p.parse_str_bytes()?.as_chunks::<20>();
+                    let piece_chunks = p.parse_bytes()?.as_chunks::<20>();
                     if !piece_chunks.1.is_empty() {
                         return Err(Error::InvalidSyntax);
                     }
@@ -111,7 +111,6 @@ impl<'a> Info<'a> {
 }
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     // Helper to create a 20-byte pseudo-hash for testing
