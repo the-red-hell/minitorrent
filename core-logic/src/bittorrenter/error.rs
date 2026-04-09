@@ -20,7 +20,7 @@ where
     /// TCP connection or I/O failed.
     TcpError(<NET as TcpConnector>::Error),
     /// File system operation failed.
-    FsError(<<V as VolumeMgr>::BlockDevice as BlockDevice>::Error),
+    FsError(embedded_sdmmc::Error<<<V as VolumeMgr>::BlockDevice as BlockDevice>::Error>),
     /// Failed to parse the tracker's response (e.g., invalid bencoding).
     TrackerResponseParseError,
     /// Failed to perform the BitTorrent handshake with a peer.

@@ -30,10 +30,7 @@ use embedded_io_async::{Read, Write};
 #[allow(async_fn_in_trait)]
 pub trait TcpConnector {
     /// The error type returned when a connection fails.
-    #[cfg(feature = "defmt")]
-    type Error: defmt::Format;
-    #[cfg(feature = "log")]
-    type Error: core::fmt::Debug;
+    type Error: defmt_or_log::FormatOrDebug;
 
     /// The established TCP connection type.
     ///
