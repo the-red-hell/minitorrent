@@ -2,7 +2,7 @@ use ::core::marker::PhantomData;
 
 use crate::{TcpConnector, core::PeerId};
 pub mod event_loop;
-mod handshake;
+pub mod handshake;
 mod messages;
 
 pub const BLOCK_SIZE: usize = 16 * 1024; // 16KB

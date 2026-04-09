@@ -95,9 +95,14 @@ impl<'a> PeerMessage<'a> {
     }
 
     pub(crate) fn from_bytes(data: &'a [u8]) -> Result<Self, MessageError> {
-        if data.is_empty() {
+        if data.len() < 4 {
+            return Err(MessageError::Empty);
+        }
+        let len = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
+        if len == 0 {
             return Ok(Self::KeepAlive);
         }
+
         match data[0] {
             b if b == PeerMessageTypes::Choke as u8 => Ok(PeerMessage::Choke),
             b if b == PeerMessageTypes::Unchoke as u8 => Ok(PeerMessage::Unchoke),

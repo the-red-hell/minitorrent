@@ -46,9 +46,26 @@ where
     ) -> Result<Peer<'a, NET, Handshaken, Unchoked, Interested>, NET::Error> {
         // send interested message to peer
 
-        let mut buf = [0u8; 1];
-        while buf[0] != PeerMessageTypes::Unchoke as u8 {
-            self.connection().read(&mut buf).await?;
+        let mut buf = [0u8; 5]; // the unchoke message is 5 bytes long, for optimization we read it directly into those 5 bytes
+        while PeerMessage::from_bytes(&buf).is_err() {
+            self.connection()
+                .read_exact(&mut buf)
+                .await
+                .map_err(|read_exact_error| match read_exact_error {
+                    ReadExactError::UnexpectedEof => todo!("fuking implement this"),
+                    ReadExactError::Other(e) => e,
+                })?;
+        }
+
+        Ok(Peer {
+            connection: self.connection,
+            _handshake_state: PhantomData,
+            _choke_state: PhantomData,
+            _interest_state: PhantomData,
+        })
+    }
+}
+
         }
 
         Ok(Peer {

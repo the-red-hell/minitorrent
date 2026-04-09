@@ -3,7 +3,7 @@
 use embedded_nal_async::Dns;
 use embedded_sdmmc::BlockDevice;
 
-use crate::{TcpConnector, fs::VolumeMgr};
+use crate::{TcpConnector, fs::VolumeMgr, peer::handshake::HandshakeError};
 
 /// Errors that can occur during BitTorrent operations.
 ///
@@ -24,5 +24,5 @@ where
     /// Failed to parse the tracker's response (e.g., invalid bencoding).
     TrackerResponseParseError,
     /// Failed to perform the BitTorrent handshake with a peer.
-    HandshakeFailed,
+    HandshakeFailed(HandshakeError<NET>),
 }
