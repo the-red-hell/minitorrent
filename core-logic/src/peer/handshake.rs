@@ -18,25 +18,25 @@ where
     pub(crate) async fn into_handshake_performed(
         mut self,
         info_hash: &InfoHash,
-    ) -> Result<Peer<'a, NET, Handshaken>, HandshakeError> {
+    ) -> Result<Peer<'a, NET, Handshaken>, HandshakeError<NET>> {
         let handshake_msg = construct_handshake(info_hash, &PEER_ID);
         self.connection()
             .write_all(handshake_msg.as_slice())
             .await
-            .map_err(|_| HandshakeError)?;
+            .map_err(HandshakeError::WriteFailed)?;
 
         let mut response_buf = [0u8; 68];
         self.connection()
             .read_exact(&mut response_buf)
             .await
-            .map_err(|_| HandshakeError)?;
+            .map_err(HandshakeError::ReadFailed)?;
 
         // only assert Info-Hash, the rest of the handshake response can be different (e.g. reserved bytes, peer_id)
-        assert_eq!(
-            response_buf[28..48],
-            handshake_msg[28..48],
-            "Handshake info_hash does not match the sent handshake"
-        );
+        if response_buf[28..48] != handshake_msg[28..48] {
+            return Err(HandshakeError::InvalidHash);
+        }
+
+        defmt_or_log::info!("Handshake successful with peer");
 
         // TODO: send bitfield?
 
@@ -64,4 +64,15 @@ fn construct_handshake(info_hash: &InfoHash, peer_id: &[u8; 20]) -> [u8; 68] {
     handshake_msg
 }
 
-pub(crate) struct HandshakeError;
+#[defmt_or_log::derive_format_or_debug]
+pub enum HandshakeError<NET>
+where
+    NET: TcpConnector,
+{
+    /// Writing has failed
+    WriteFailed(NET::Error),
+    /// Reading has failed
+    ReadFailed(embedded_io_async::ReadExactError<NET::Error>),
+    /// Hash mismatch in handshake response
+    InvalidHash,
+}
