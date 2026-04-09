@@ -49,6 +49,7 @@ where
             state: Downloading::new(tracker_response.peers, metainfo),
         })
     }
+
     /// Send a request to the BitTorrent tracker and receive the response.
     ///
     /// This performs an HTTP GET request to the tracker's announce URL with

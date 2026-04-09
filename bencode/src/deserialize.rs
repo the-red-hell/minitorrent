@@ -47,14 +47,14 @@ impl<'a> BencodeParser<'a> {
 
     /// Consume a length-prefixed byte string: "4:spam" -> "spam" and utf-8 decode it
     pub fn parse_str(&mut self) -> Result<&'a str> {
-        let s_bytes = self.parse_str_bytes()?;
+        let s_bytes = self.parse_bytes()?;
         let s = str::from_utf8(s_bytes).map_err(Error::InvalidUtf8)?;
 
         Ok(s)
     }
 
     /// Consume a length-prefixed byte string: "4:spam" -> "spam"
-    pub fn parse_str_bytes(&mut self) -> Result<&'a [u8]> {
+    pub fn parse_bytes(&mut self) -> Result<&'a [u8]> {
         // Find the colon
         let colon_idx = self
             .input
@@ -81,6 +81,8 @@ impl<'a> BencodeParser<'a> {
         Ok(s_bytes)
     }
 
+    /// mainly used for sha1-hashing the 'info' dict, where we need the raw bytes of the whole thing
+    /// essentially it is used to just consume the next element (int, string, list, or dict) and return the raw bytes that were consumed.
     pub fn parse_raw_value(&mut self) -> Result<&'a [u8]> {
         let original = self.input;
         self.skip_any()?; // Advances self.input
@@ -97,9 +99,10 @@ impl<'a> BencodeParser<'a> {
     pub fn skip_any(&mut self) -> Result<()> {
         match self.peek() {
             Some(b'i') => self.parse_int().map(|_| ()),
-            Some(b'0'..=b'9') => self.parse_str_bytes().map(|_| ()),
+            Some(b'0'..=b'9') => self.parse_bytes().map(|_| ()),
             Some(b'l') => {
                 self.input = &self.input[1..]; // skip 'l'
+                // skip until 'e'
                 while self.peek() != Some(b'e') {
                     self.skip_any()?;
                 }
@@ -108,6 +111,7 @@ impl<'a> BencodeParser<'a> {
             }
             Some(b'd') => {
                 self.input = &self.input[1..]; // skip 'd'
+                // skip until 'e'
                 while self.peek() != Some(b'e') {
                     self.skip_any()?; // key
                     self.skip_any()?; // value
