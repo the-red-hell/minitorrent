@@ -46,11 +46,26 @@ impl<'a> PeerMessage<'a> {
 
     /// we will mostly send 13 bytes, only for the piece, more is required
     /// note that piece messages are currently not supported, let's see how we'll handle them
-    /// TODO: piece messages
-    pub(crate) fn as_bytes(&self) -> Vec<u8, 13> {
-        let mut bytes = Vec::<u8, 13>::new();
+    /// TODO: piece messages & bitfield
+    pub(crate) fn as_bittorrent_bytes(&self) -> Vec<u8, 17> {
+        let mut bytes = Vec::<u8, 17>::new();
 
-        // first byte is the message type
+        // --- message length
+        let length: u32 = match self {
+            PeerMessage::KeepAlive => 0,
+            PeerMessage::Choke
+            | PeerMessage::Unchoke
+            | PeerMessage::Interested
+            | PeerMessage::NotInterested => 1,
+            PeerMessage::Have(piece_index) => 5,
+            PeerMessage::BitField(_bitfield) => unimplemented!(),
+            PeerMessage::Request { .. } | PeerMessage::Cancel { .. } => 13,
+            PeerMessage::Piece { .. } => unimplemented!("Piece messages are not supported yet"), // + 7
+        };
+
+        bytes.extend_from_slice(&length.to_be_bytes()).unwrap();
+
+        // --- message type
         if let Some(message_type) = self.get_type() {
             bytes.push(message_type).expect("it's 13 bytes");
         } else {
@@ -58,6 +73,7 @@ impl<'a> PeerMessage<'a> {
             return bytes;
         }
 
+        // --- payload
         match self {
             PeerMessage::Choke
             | PeerMessage::Unchoke
@@ -94,43 +110,52 @@ impl<'a> PeerMessage<'a> {
         bytes
     }
 
-    pub(crate) fn from_bytes(data: &'a [u8]) -> Result<Self, MessageError> {
+    // TODO
+    pub(crate) fn from_bytes(data: &'a [u8]) -> Result<Option<Self>, MessageError> {
         if data.len() < 4 {
-            return Err(MessageError::Empty);
-        }
-        let len = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
-        if len == 0 {
-            return Ok(Self::KeepAlive);
+            return Ok(None); // Not enough data to read
         }
 
-        match data[0] {
-            b if b == PeerMessageTypes::Choke as u8 => Ok(PeerMessage::Choke),
-            b if b == PeerMessageTypes::Unchoke as u8 => Ok(PeerMessage::Unchoke),
-            b if b == PeerMessageTypes::Interested as u8 => Ok(PeerMessage::Interested),
-            b if b == PeerMessageTypes::NotInterested as u8 => Ok(PeerMessage::NotInterested),
-            b if b == PeerMessageTypes::Have as u8 => parse_have_message(data),
-            b if b == PeerMessageTypes::Bitfield as u8 => parse_bitfield_message(data),
-            b if b == PeerMessageTypes::Request as u8 => parse_request_message(data),
-            b if b == PeerMessageTypes::Piece as u8 => parse_piece_message(data),
-            b if b == PeerMessageTypes::Cancel as u8 => parse_cancel_message(data),
+        let len = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
+        if len == 0 {
+            return Ok(Some(Self::KeepAlive));
+        }
+
+        match data[4] {
+            b if len == 1 && b == PeerMessageTypes::Choke as u8 => Ok(Some(PeerMessage::Choke)),
+            b if len == 1 && b == PeerMessageTypes::Unchoke as u8 => Ok(Some(PeerMessage::Unchoke)),
+            b if len == 1 && b == PeerMessageTypes::Interested as u8 => {
+                Ok(Some(PeerMessage::Interested))
+            }
+            b if len == 1 && b == PeerMessageTypes::NotInterested as u8 => {
+                Ok(Some(PeerMessage::NotInterested))
+            }
+            b if len == 5 && b == PeerMessageTypes::Have as u8 => parse_have_message(data),
+            b if len >= 1 && b == PeerMessageTypes::Bitfield as u8 => parse_bitfield_message(data),
+            b if len == 13 && b == PeerMessageTypes::Request as u8 => parse_request_message(data),
+            b if len >= 13 && b == PeerMessageTypes::Piece as u8 => parse_piece_message(data),
+            b if len == 13 && b == PeerMessageTypes::Cancel as u8 => parse_cancel_message(data),
             b => Err(MessageError::UnknownMessageType(b)),
         }
     }
 }
 
-fn parse_have_message<'a>(data: &'a [u8]) -> Result<PeerMessage<'a>, MessageError> {
+fn parse_have_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
     if data.len() < 5 {
         return Err(MessageError::InvalidLength);
     }
     let piece_index = u32::from_be_bytes([data[1], data[2], data[3], data[4]]);
-    Ok(PeerMessage::Have(piece_index))
+    Ok(Some(PeerMessage::Have(piece_index)))
 }
 
-fn parse_bitfield_message<'a>(_data: &'a [u8]) -> Result<PeerMessage<'a>, MessageError> {
-    todo!("Bitfield message parsing not implemented yet");
+fn parse_bitfield_message<'a>(_data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
+    // TODO: todo!("Bitfield message parsing not implemented yet");
+    Err(MessageError::UnknownMessageType(
+        PeerMessageTypes::Bitfield as u8,
+    ))
 }
 
-fn parse_request_message<'a>(data: &'a [u8]) -> Result<PeerMessage<'a>, MessageError> {
+fn parse_request_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
     if data.len() < 13 {
         return Err(MessageError::InvalidLength);
     }
@@ -139,14 +164,14 @@ fn parse_request_message<'a>(data: &'a [u8]) -> Result<PeerMessage<'a>, MessageE
     let begin = u32::from_be_bytes(data[5..=8].try_into().unwrap());
     let length = u32::from_be_bytes(data[9..=12].try_into().unwrap());
 
-    Ok(PeerMessage::Request {
+    Ok(Some(PeerMessage::Request {
         index,
         begin,
         length,
-    })
+    }))
 }
 
-fn parse_piece_message<'a>(data: &'a [u8]) -> Result<PeerMessage<'a>, MessageError> {
+fn parse_piece_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
     if data.len() < 13 {
         return Err(MessageError::InvalidLength);
     }
@@ -155,14 +180,14 @@ fn parse_piece_message<'a>(data: &'a [u8]) -> Result<PeerMessage<'a>, MessageErr
     let begin = u32::from_be_bytes(data[5..=8].try_into().unwrap());
     let block_data = &data[9..];
 
-    Ok(PeerMessage::Piece {
+    Ok(Some(PeerMessage::Piece {
         index,
         begin,
         block: block_data,
-    })
+    }))
 }
 
-fn parse_cancel_message<'a>(data: &'a [u8]) -> Result<PeerMessage<'a>, MessageError> {
+fn parse_cancel_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
     if data.len() < 13 {
         return Err(MessageError::InvalidLength);
     }
@@ -171,11 +196,11 @@ fn parse_cancel_message<'a>(data: &'a [u8]) -> Result<PeerMessage<'a>, MessageEr
     let begin = u32::from_be_bytes(data[5..=8].try_into().unwrap());
     let length = u32::from_be_bytes(data[9..=12].try_into().unwrap());
 
-    Ok(PeerMessage::Cancel {
+    Ok(Some(PeerMessage::Cancel {
         index,
         begin,
         length,
-    })
+    }))
 }
 
 impl<'a> TryInto<u8> for PeerMessage<'a> {

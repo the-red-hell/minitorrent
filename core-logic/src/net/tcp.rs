@@ -5,9 +5,10 @@ use embedded_io_async::{Read, Write};
 /// A trait for establishing TCP connections where the **caller provides buffers**.
 ///
 /// Unlike `embedded_nal_async::TcpConnect`, this trait accepts mutable buffer
-/// references as parameters. It avoids interior mutability (RefCell,
-/// Mutex) in the network implementation, which better for embedded single-threaded
-/// applications where you don't have too much resources.
+/// references as parameters.
+/// Now you might be wondering why that is. The thing is, I cannot implement this trait
+/// bc smoltcp's `TcpSocket`'s `connect`-method needs mutable access to the buffers but
+/// the trait only gives us an immutable reference.
 ///
 /// # Buffer Lifetimes
 ///
