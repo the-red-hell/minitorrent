@@ -1,5 +1,5 @@
-use alloc::vec::Vec;
 use embedded_sdmmc::ShortFileName;
+use heapless::Vec;
 
 use crate::{BitTorrenterError, MetaInfoFile, core::InfoHash};
 
@@ -7,16 +7,16 @@ pub struct RequestingTracker;
 
 #[cfg_attr(feature = "log", derive(Debug))]
 pub struct Downloading {
-    peers: heapless::Vec<core::net::SocketAddrV4, 10>,
+    peers: Vec<core::net::SocketAddrV4, 10>,
     info_hash: InfoHash,
     piece_length: u32,
     total_length: u32,
     name: ShortFileName,
-    piece_hashes: Vec<InfoHash>,
+    piece_hashes: alloc::vec::Vec<InfoHash>,
 }
 impl Downloading {
     pub(crate) fn new(
-        peers: heapless::Vec<core::net::SocketAddrV4, 10>,
+        peers: Vec<core::net::SocketAddrV4, 10>,
         metainfo: &MetaInfoFile<'_>,
     ) -> Self {
         let name = ShortFileName::create_from_str(metainfo.info.name)

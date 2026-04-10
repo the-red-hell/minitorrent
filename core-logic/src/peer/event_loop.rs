@@ -23,7 +23,7 @@ where
 
         let interested_msg = PeerMessage::Interested;
         self.connection()
-            .write_all(&interested_msg.as_bytes())
+            .write_all(&interested_msg.as_bittorrent_bytes())
             .await?;
 
         Ok(Peer {
@@ -47,9 +47,12 @@ where
         // send interested message to peer
 
         let mut buf = [0u8; 5]; // the unchoke message is 5 bytes long, for optimization we read it directly into those 5 bytes
-        while PeerMessage::from_bytes(&buf).is_err() {
+        while !matches!(
+            PeerMessage::from_bytes(&buf),
+            Err(_) | Ok(Some(PeerMessage::Unchoke))
+        ) {
             self.connection()
-                .read_exact(&mut buf)
+                .read_exact(&mut buf) // TODO: I cannot read exactly 5 bytes, I have to call from_bytes until it finally returns something useful (Ok(Some(...)))
                 .await
                 .map_err(|read_exact_error| match read_exact_error {
                     ReadExactError::UnexpectedEof => todo!("fuking implement this"),

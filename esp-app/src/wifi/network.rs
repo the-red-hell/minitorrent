@@ -9,8 +9,9 @@ use esp_radio::wifi::{
 const SSID: &str = "paul";
 const PASSWORD: &str = "00000000";
 
+/// connects the esp to wifi and also makes sure it stays connected
 #[embassy_executor::task]
-pub(super) async fn connection(mut controller: WifiController<'static>) {
+pub(super) async fn wifi_connection_task(mut controller: WifiController<'static>) {
     debug!("start connection task");
     debug!("Device capabilities: {:?}", controller.capabilities());
     loop {
