@@ -22,7 +22,7 @@ where
     /// File system operation failed.
     FsError(embedded_sdmmc::Error<<<V as VolumeMgr>::BlockDevice as BlockDevice>::Error>),
     /// Failed to parse the tracker's response (e.g., invalid bencoding).
-    TrackerResponseParseError,
+    TrackerResponseParseError(bencode::Error),
     /// Failed to perform the BitTorrent handshake with a peer.
     HandshakeFailed(HandshakeError<NET>),
 }

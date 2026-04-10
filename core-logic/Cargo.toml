@@ -25,5 +25,5 @@ embedded-io = "0.7.1"
 env_logger = "0.11"
 
 [features]
-defmt = ["defmt-or-log/defmt", "embedded-io-async/defmt", "heapless/defmt", "embedded-sdmmc/defmt-log", "dep:defmt"]
-log = ["defmt-or-log/log", "dep:log"]
+defmt = ["defmt-or-log/defmt", "embedded-io-async/defmt", "bencode/defmt", "heapless/defmt", "embedded-sdmmc/defmt-log", "dep:defmt"]
+log = ["defmt-or-log/log", "bencode/log", "dep:log"]
