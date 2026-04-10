@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
+use embedded_sdmmc::ShortFileName;
 
-use crate::{MetaInfoFile, core::InfoHash};
+use crate::{BitTorrenterError, MetaInfoFile, core::InfoHash};
 
 pub struct RequestingTracker;
 
@@ -10,7 +11,7 @@ pub struct Downloading {
     info_hash: InfoHash,
     piece_length: u32,
     total_length: u32,
-    name: heapless::String<64>,
+    name: ShortFileName,
     piece_hashes: Vec<InfoHash>,
 }
 impl Downloading {
@@ -18,12 +19,14 @@ impl Downloading {
         peers: heapless::Vec<core::net::SocketAddrV4, 10>,
         metainfo: &MetaInfoFile<'_>,
     ) -> Self {
+        let name = ShortFileName::create_from_str(metainfo.info.name)
+            .unwrap_or_else(|_| ShortFileName::create_from_str("1").expect("is valid")); // TODO: maybe generate uuid or counting up
         Self {
             peers,
             info_hash: metainfo.info_hash,
             piece_length: metainfo.info.piece_length,
             total_length: metainfo.info.length,
-            name: heapless::String::from_iter(metainfo.announce.chars()),
+            name,
             piece_hashes: metainfo.info.pieces.to_vec(),
         }
     }
@@ -34,7 +37,7 @@ impl Downloading {
         self.total_length
     }
 
-    pub fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &ShortFileName {
         &self.name
     }
 
