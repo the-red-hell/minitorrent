@@ -36,7 +36,7 @@ where
         // Here you would typically parse the tracker's response and transition to the next state
         // For this example, we'll just log the raw response
         let tracker_response = TrackerResponse::parse(&rx_buf[..bytes_written])
-            .map_err(|_| BitTorrenterError::TrackerResponseParseError)?;
+            .map_err(BitTorrenterError::TrackerResponseParseError)?;
 
         defmt_or_log::info!("Received tracker response: {:?}", tracker_response);
 
