@@ -1,6 +1,9 @@
 use heapless::Vec;
 
-use crate::peer::messages::{PeerMessageTypes, error::MessageError};
+use crate::peer::{
+    buf_reader::BufReader,
+    messages::{PeerMessageTypes, error::MessageError},
+};
 
 #[defmt_or_log::derive_format_or_debug]
 pub enum PeerMessage<'a> {
@@ -111,7 +114,9 @@ impl<'a> PeerMessage<'a> {
     }
 
     // TODO
-    pub(crate) fn from_bytes(data: &'a [u8]) -> Result<Option<Self>, MessageError> {
+    pub(crate) fn from_bytes<const CAP: usize>(
+        data: &'a mut BufReader<CAP>,
+    ) -> Result<Option<Self>, MessageError> {
         if data.len() < 4 {
             return Ok(None); // Not enough data to read
         }
@@ -121,6 +126,7 @@ impl<'a> PeerMessage<'a> {
             return Ok(Some(Self::KeepAlive));
         }
 
+        let payload = &data.as_slice()[4..];
         match data[4] {
             b if len == 1 && b == PeerMessageTypes::Choke as u8 => Ok(Some(PeerMessage::Choke)),
             b if len == 1 && b == PeerMessageTypes::Unchoke as u8 => Ok(Some(PeerMessage::Unchoke)),
@@ -130,11 +136,15 @@ impl<'a> PeerMessage<'a> {
             b if len == 1 && b == PeerMessageTypes::NotInterested as u8 => {
                 Ok(Some(PeerMessage::NotInterested))
             }
-            b if len == 5 && b == PeerMessageTypes::Have as u8 => parse_have_message(data),
-            b if len >= 1 && b == PeerMessageTypes::Bitfield as u8 => parse_bitfield_message(data),
-            b if len == 13 && b == PeerMessageTypes::Request as u8 => parse_request_message(data),
-            b if len >= 13 && b == PeerMessageTypes::Piece as u8 => parse_piece_message(data),
-            b if len == 13 && b == PeerMessageTypes::Cancel as u8 => parse_cancel_message(data),
+            b if len == 5 && b == PeerMessageTypes::Have as u8 => parse_have_message(payload),
+            b if len >= 1 && b == PeerMessageTypes::Bitfield as u8 => {
+                parse_bitfield_message(payload)
+            }
+            b if len == 13 && b == PeerMessageTypes::Request as u8 => {
+                parse_request_message(payload)
+            }
+            b if len >= 13 && b == PeerMessageTypes::Piece as u8 => parse_piece_message(payload),
+            b if len == 13 && b == PeerMessageTypes::Cancel as u8 => parse_cancel_message(payload),
             b => Err(MessageError::UnknownMessageType(b)),
         }
     }
@@ -208,5 +218,102 @@ impl<'a> TryInto<u8> for PeerMessage<'a> {
 
     fn try_into(self) -> Result<u8, Self::Error> {
         self.get_type().ok_or(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_not_enough_data() {
+        let mut buf = BufReader::<10>::new();
+        buf.remaining_mut()[..3].copy_from_slice(&[0, 0, 0]); // only 3 bytes, should be at least 4 for length
+        assert!(PeerMessage::from_bytes(&mut buf).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_keep_alive_message() {
+        let mut buf = BufReader::<10>::new();
+        buf.remaining_mut()[..4].copy_from_slice(&0u32.to_be_bytes());
+        buf.advance_n(4);
+        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+        assert!(matches!(msg, PeerMessage::KeepAlive));
+    }
+
+    #[test]
+    fn test_singular_messages() {
+        // Choke, Unchoke, Interested, NotInterested
+
+        // Choke
+        let mut buf = BufReader::<10>::new();
+        buf.remaining_mut()[..4].copy_from_slice(&1u32.to_be_bytes());
+        buf.remaining_mut()[4] = PeerMessageTypes::Choke as u8;
+        buf.advance_n(5);
+        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+        assert!(matches!(msg, PeerMessage::Choke));
+
+        // Unchoke
+        buf.reset();
+        buf.remaining_mut()[..4].copy_from_slice(&1u32.to_be_bytes());
+        buf.remaining_mut()[4] = PeerMessageTypes::Unchoke as u8;
+        buf.advance_n(5);
+        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+        assert!(matches!(msg, PeerMessage::Unchoke));
+
+        // Interested
+        buf.reset();
+        buf.remaining_mut()[..4].copy_from_slice(&1u32.to_be_bytes());
+        buf.remaining_mut()[4] = PeerMessageTypes::Interested as u8;
+        buf.advance_n(5);
+        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+        assert!(matches!(msg, PeerMessage::Interested));
+
+        // NotInterested
+        buf.reset();
+        buf.remaining_mut()[..4].copy_from_slice(&1u32.to_be_bytes());
+        buf.remaining_mut()[4] = PeerMessageTypes::NotInterested as u8;
+        buf.advance_n(5);
+        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+        assert!(matches!(msg, PeerMessage::NotInterested));
+    }
+
+    #[test]
+    fn test_have_message() {
+        let mut buf = BufReader::<10>::new();
+        let piece_index = 12345u32.to_be_bytes();
+        buf.remaining_mut()[..4].copy_from_slice(&(piece_index.len() as u32 + 1).to_be_bytes());
+        buf.remaining_mut()[4] = PeerMessageTypes::Have as u8;
+        buf.remaining_mut()[5..9].copy_from_slice(&piece_index);
+        buf.advance_n(9);
+
+        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+
+        assert!(matches!(msg, PeerMessage::Have(12345)));
+    }
+
+    #[test]
+    fn test_request_message() {
+        let mut buf = BufReader::<20>::new();
+        let index = 1u32.to_be_bytes();
+        let begin = 2u32.to_be_bytes();
+        let length = 3u32.to_be_bytes();
+        buf.remaining_mut()[..4].copy_from_slice(&13u32.to_be_bytes());
+        buf.remaining_mut()[4] = PeerMessageTypes::Request as u8;
+        buf.remaining_mut()[5..9].copy_from_slice(&index);
+        buf.remaining_mut()[9..13].copy_from_slice(&begin);
+        buf.remaining_mut()[13..17].copy_from_slice(&length);
+        buf.advance_n(17);
+
+        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+
+        assert!(matches!(
+            msg,
+            PeerMessage::Request {
+                index: 1,
+                begin: 2,
+                length: 3
+            }
+        ));
     }
 }

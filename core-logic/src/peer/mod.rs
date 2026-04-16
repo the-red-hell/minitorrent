@@ -1,9 +1,10 @@
 use ::core::marker::PhantomData;
 
-use crate::{TcpConnector, core::PeerId};
-pub mod event_loop;
+use crate::{TcpConnector, core::PeerId, peer::buf_reader::BufReader};
+pub(super) mod buf_reader;
 pub mod handshake;
 mod messages;
+pub mod process;
 
 pub const BLOCK_SIZE: usize = 16 * 1024; // 16KB
 const PEER_ID: PeerId = *b"AwesomeESP32C3Client";
@@ -20,33 +21,24 @@ const PEER_ID: PeerId = *b"AwesomeESP32C3Client";
 /// let peer = Peer::new(tcp_connection); // NotHandshaken, Choked, NotInterested
 /// // Perform handshake
 /// let peer = peer.into_handshake_performed(info_hash).await?; // Handshaken, Choked, NotInterested
-/// // ... later ...
-/// let peer = peer.unchoke();```
-pub(crate) struct Peer<
-    'a,
-    NET,
-    HandsShaken = NotHandshaken,
-    CHOKED = Choked,
-    INTERESTED = NotInterested,
-> where
+pub(crate) struct Peer<'a, NET, HandshakeState = NotHandshaken>
+where
     NET: TcpConnector + 'a,
 {
+    state: State,
     connection: NET::Connection<'a>,
-    _handshake_state: PhantomData<HandsShaken>,
-    _choke_state: PhantomData<CHOKED>,
-    _interest_state: PhantomData<INTERESTED>,
+    _handshake_state: PhantomData<HandshakeState>,
 }
 
-impl<'a, NET, HandsShaken, CHOKED, INTERESTED> Peer<'a, NET, HandsShaken, CHOKED, INTERESTED>
+impl<'a, NET, HandshakeState> Peer<'a, NET, HandshakeState>
 where
     NET: TcpConnector + 'a,
 {
     pub(crate) fn new(connection: NET::Connection<'a>) -> Self {
         Self {
             connection,
+            state: State::default(),
             _handshake_state: PhantomData,
-            _choke_state: PhantomData,
-            _interest_state: PhantomData,
         }
     }
 
@@ -56,15 +48,17 @@ where
     }
 }
 
+#[repr(u8)]
 #[defmt_or_log::derive_format_or_debug]
-pub(super) struct Choked;
-#[defmt_or_log::derive_format_or_debug]
-pub(super) struct Unchoked;
-
-#[defmt_or_log::derive_format_or_debug]
-pub(super) struct Interested;
-#[defmt_or_log::derive_format_or_debug]
-pub(super) struct NotInterested;
+#[derive(Clone, Copy, Default)]
+pub(super) enum State {
+    #[default]
+    NotHandshaken = 0,
+    Choked,
+    Interested,
+    Unchoked,
+    NotInterested,
+}
 
 #[defmt_or_log::derive_format_or_debug]
 pub(super) struct Handshaken;
