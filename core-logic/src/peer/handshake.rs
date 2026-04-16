@@ -43,8 +43,7 @@ where
         Ok(Peer {
             connection: self.connection,
             _handshake_state: PhantomData,
-            _choke_state: PhantomData,
-            _interest_state: PhantomData,
+            state: crate::peer::State::Choked,
         })
     }
 }

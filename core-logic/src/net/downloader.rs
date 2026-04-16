@@ -26,23 +26,37 @@ where
         )
         .await?;
 
-        let handshake_peer = peer
+        let mut handshake_peer = peer
             .into_handshake_performed(self.state.get_info_hash())
             .await
             .map_err(BitTorrenterError::HandshakeFailed)?;
 
-        let interested_peer = handshake_peer
-            .send_interested()
+        handshake_peer
+            .process_incoming_data()
             .await
             .map_err(BitTorrenterError::TcpError)?;
 
-        let unchoked_peer = interested_peer
-            .wait_for_unchoke()
-            .await
-            .map_err(BitTorrenterError::TcpError)?;
+        // let unchoked_peer = interested_peer
+        //     .wait_for_unchoke()
+        //     .await
+        //     .map_err(BitTorrenterError::TcpError)?;
 
-        defmt_or_log::info!("Peer unchoked, starting file download...");
+        // let name = self.state.get_name();
 
+        // defmt_or_log::info!(
+        //     "Peer unchoked, starting file download for file {:?}...",
+        //     name
+        // );
+        // self.fs
+        //     .open_file(name, embedded_sdmmc::Mode::ReadWriteCreateOrAppend)
+        //     .map_err(BitTorrenterError::FsError)?;
+
+        // let piece_length = self.state.get_piece_length();
+        // let total_length = self.state.get_total_length();
+        // let _finished_peer = unchoked_peer
+        //     .download_file(piece_length, total_length, &mut self.fs)
+        //     .await
+        //     .map_err(BitTorrenterError::TcpError)?;
         Ok(())
     }
 }
@@ -57,6 +71,7 @@ where
     V: VolumeMgr,
 {
     defmt_or_log::info!("Connecting to peer at: {:?}", peer_addr);
+
     let conn = net
         .connect(peer_addr, &mut socket_buffers.rx, &mut socket_buffers.tx)
         .await
