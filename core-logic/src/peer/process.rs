@@ -1,6 +1,4 @@
-use ::core::marker::PhantomData;
-
-use embedded_io_async::{Read, ReadExactError, Write};
+use embedded_io_async::{Read, Write};
 
 use crate::{
     TcpConnector,
@@ -13,6 +11,7 @@ impl<'a, NET> Peer<'a, NET, Handshaken>
 where
     NET: TcpConnector + 'a,
 {
+    /// main entry
     /// - reads data
     /// - parses & handles messages
     pub(crate) async fn process_incoming_data(&mut self) -> Result<(), NET::Error> {
@@ -57,7 +56,7 @@ where
             };
 
             // process the message
-            self.process(&msg);
+            self.process(&msg).await?;
 
             // reset the buffer for the next message
             buf.reset();
@@ -66,17 +65,36 @@ where
         Ok(())
     }
     /// Processes an incoming peer message.
-    pub(super) fn process(&mut self, msg: &PeerMessage<'_>) {
+    async fn process(&mut self, msg: &PeerMessage<'_>) -> Result<(), NET::Error> {
         match (self.state, msg) {
             (State::NotHandshaken, _) => {
-                defmt_or_log::error!(
-                    "Received message from peer before handshake: {:?}. Ignoring.",
-                    msg
-                );
-                unreachable!();
+                unreachable!("this method isn't callable here");
             }
-            _ => (),
+            (State::ChokedNotInterested, _) => {
+                let msg = PeerMessage::Interested;
+                self.connection()
+                    .write_all(&msg.as_bittorrent_bytes())
+                    .await?;
+            }
+            (State::ChokedInterested, PeerMessage::Unchoke) => {
+                self.state = State::UnchokedInterested;
+                // TODO: send requests for pieces
+            }
+            (
+                State::UnchokedInterested,
+                PeerMessage::Piece {
+                    index: _index,
+                    begin: _begin,
+                    block: _block,
+                },
+            ) => {}
+            (State::UnchokedInterested, PeerMessage::Choke) => {
+                self.state = State::ChokedInterested;
+            }
+            _ => todo!(),
         }
+
+        Ok(())
     }
 }
 

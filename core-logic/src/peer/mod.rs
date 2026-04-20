@@ -1,6 +1,6 @@
 use ::core::marker::PhantomData;
 
-use crate::{TcpConnector, core::PeerId, peer::buf_reader::BufReader};
+use crate::{TcpConnector, core::PeerId};
 pub(super) mod buf_reader;
 pub mod handshake;
 mod messages;
@@ -48,16 +48,14 @@ where
     }
 }
 
-#[repr(u8)]
 #[defmt_or_log::derive_format_or_debug]
 #[derive(Clone, Copy, Default)]
 pub(super) enum State {
     #[default]
-    NotHandshaken = 0,
-    Choked,
-    Interested,
-    Unchoked,
-    NotInterested,
+    NotHandshaken,
+    ChokedNotInterested,
+    ChokedInterested,
+    UnchokedInterested,
 }
 
 #[defmt_or_log::derive_format_or_debug]

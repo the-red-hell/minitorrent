@@ -12,8 +12,8 @@ pub enum PeerMessage<'a> {
     Unchoke,
     Interested,
     NotInterested,
-    Have(u32),             // piece index
-    BitField(Vec<u8, 64>), // bitfield data
+    Have(u32),               // piece index
+    BitField(Vec<bool, 64>), // bitfield data
     Request {
         index: u32,
         begin: u32,
@@ -47,7 +47,7 @@ impl<'a> PeerMessage<'a> {
         }
     }
 
-    /// we will mostly send 13 bytes, only for the piece, more is required
+    /// we will mostly send 17 bytes, only for the piece, more is required
     /// note that piece messages are currently not supported, let's see how we'll handle them
     /// TODO: piece messages & bitfield
     pub(crate) fn as_bittorrent_bytes(&self) -> Vec<u8, 17> {
@@ -60,7 +60,7 @@ impl<'a> PeerMessage<'a> {
             | PeerMessage::Unchoke
             | PeerMessage::Interested
             | PeerMessage::NotInterested => 1,
-            PeerMessage::Have(piece_index) => 5,
+            PeerMessage::Have(_) => 5,
             PeerMessage::BitField(_bitfield) => unimplemented!(),
             PeerMessage::Request { .. } | PeerMessage::Cancel { .. } => 13,
             PeerMessage::Piece { .. } => unimplemented!("Piece messages are not supported yet"), // + 7
@@ -86,8 +86,8 @@ impl<'a> PeerMessage<'a> {
             PeerMessage::Have(piece_index) => {
                 bytes.extend_from_slice(&piece_index.to_be_bytes()).unwrap();
             }
-            PeerMessage::BitField(bitfield) => {
-                bytes.extend_from_slice(bitfield).unwrap();
+            PeerMessage::BitField(_bitfield) => {
+                todo!("Bitfield message serialization not implemented yet");
             }
             PeerMessage::Request {
                 index,
@@ -237,8 +237,11 @@ mod tests {
         let mut buf = BufReader::<10>::new();
         buf.remaining_mut()[..4].copy_from_slice(&0u32.to_be_bytes());
         buf.advance_n(4);
+
         let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+
         assert!(matches!(msg, PeerMessage::KeepAlive));
+        assert_eq!(msg.as_bittorrent_bytes().as_slice(), &vec![0, 0, 0, 0]);
     }
 
     #[test]
@@ -250,32 +253,56 @@ mod tests {
         buf.remaining_mut()[..4].copy_from_slice(&1u32.to_be_bytes());
         buf.remaining_mut()[4] = PeerMessageTypes::Choke as u8;
         buf.advance_n(5);
+
         let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+
         assert!(matches!(msg, PeerMessage::Choke));
+        assert_eq!(
+            msg.as_bittorrent_bytes().as_slice(),
+            &vec![0, 0, 0, 1, PeerMessageTypes::Choke as u8]
+        );
 
         // Unchoke
         buf.reset();
         buf.remaining_mut()[..4].copy_from_slice(&1u32.to_be_bytes());
         buf.remaining_mut()[4] = PeerMessageTypes::Unchoke as u8;
         buf.advance_n(5);
+
         let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+
         assert!(matches!(msg, PeerMessage::Unchoke));
+        assert_eq!(
+            msg.as_bittorrent_bytes().as_slice(),
+            &vec![0, 0, 0, 1, PeerMessageTypes::Unchoke as u8]
+        );
 
         // Interested
         buf.reset();
         buf.remaining_mut()[..4].copy_from_slice(&1u32.to_be_bytes());
         buf.remaining_mut()[4] = PeerMessageTypes::Interested as u8;
         buf.advance_n(5);
+
         let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+
         assert!(matches!(msg, PeerMessage::Interested));
+        assert_eq!(
+            msg.as_bittorrent_bytes().as_slice(),
+            &vec![0, 0, 0, 1, PeerMessageTypes::Interested as u8]
+        );
 
         // NotInterested
         buf.reset();
         buf.remaining_mut()[..4].copy_from_slice(&1u32.to_be_bytes());
         buf.remaining_mut()[4] = PeerMessageTypes::NotInterested as u8;
         buf.advance_n(5);
+
         let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+
         assert!(matches!(msg, PeerMessage::NotInterested));
+        assert_eq!(
+            msg.as_bittorrent_bytes().as_slice(),
+            &vec![0, 0, 0, 1, PeerMessageTypes::NotInterested as u8]
+        );
     }
 
     #[test]
@@ -290,6 +317,14 @@ mod tests {
         let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
 
         assert!(matches!(msg, PeerMessage::Have(12345)));
+        assert_eq!(
+            msg.as_bittorrent_bytes().as_slice(),
+            [
+                &[0, 0, 0, 5, PeerMessageTypes::Have as u8][..],
+                &piece_index
+            ]
+            .concat()
+        );
     }
 
     #[test]
@@ -315,5 +350,51 @@ mod tests {
                 length: 3
             }
         ));
+        assert_eq!(
+            msg.as_bittorrent_bytes().as_slice(),
+            [
+                &[0, 0, 0, 13, PeerMessageTypes::Request as u8][..],
+                &index,
+                &begin,
+                &length
+            ]
+            .concat()
+        )
+    }
+
+    #[test]
+    fn test_piece_message() {
+        let mut buf = BufReader::<20>::new();
+        let index = 1u32.to_be_bytes();
+        let begin = 2u32.to_be_bytes();
+        let block = vec![0u8; 4];
+        buf.remaining_mut()[..4].copy_from_slice(&17u32.to_be_bytes());
+        buf.remaining_mut()[4] = PeerMessageTypes::Piece as u8;
+        buf.remaining_mut()[5..9].copy_from_slice(&index);
+        buf.remaining_mut()[9..13].copy_from_slice(&begin);
+        buf.remaining_mut()[13..17].copy_from_slice(&block);
+        buf.advance_n(17);
+
+        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+
+        assert!(matches!(
+            msg,
+            PeerMessage::Piece {
+                index: 1,
+                begin: 2,
+                block: [0, 0, 0, 0]
+            }
+        ));
+        // TODO: test block
+        // assert_eq!(
+        //     msg.as_bittorrent_bytes().as_slice(),
+        //     [
+        //         &[0, 0, 0, 17, PeerMessageTypes::Piece as u8][..],
+        //         &index,
+        //         &begin,
+        //         &block
+        //     ]
+        //     .concat()
+        // )
     }
 }

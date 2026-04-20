@@ -3,7 +3,7 @@ use embedded_nal_async::Dns;
 use crate::{
     BitTorrenter, BitTorrenterError, TcpConnector,
     bittorrenter::states::Downloading,
-    fs::{FileSystemExt, VolumeMgr},
+    fs::VolumeMgr,
     net::buffer::SocketBuffers,
     peer::{NotHandshaken, Peer},
 };
