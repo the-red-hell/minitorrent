@@ -6,6 +6,12 @@ use ::core::ops::Index;
 /// it holds a buffer and the length of the data currently in the buffer.
 /// used to construct a message from incoming data,
 /// which might not be complete
+///
+/// [0 1 2 3 4 5 0 0 0 ... 0 0 0 0] len = 6, capacity = e.g. 20
+///
+/// - `remaining_mut`: returns a mutable slice from current length (here: 6) to end (here: 20)
+/// - `advance_n(n)`: called after writing n bytes to the buffer, increases the length to n
+/// - `as_slice`: returns a slice of the buffer from 0 to current length (here: 6)
 pub(crate) struct BufReader<const CAP: usize> {
     buf: [u8; CAP],
     len: usize,
