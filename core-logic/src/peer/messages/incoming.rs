@@ -127,6 +127,11 @@ impl<'a> PeerMessage<'a> {
         }
 
         let payload = &data.as_slice()[4..];
+
+        if len as usize > payload.len() {
+            return Ok(None); // Not enough data for the full message
+        }
+
         match data[4] {
             b if len == 1 && b == PeerMessageTypes::Choke as u8 => Ok(Some(PeerMessage::Choke)),
             b if len == 1 && b == PeerMessageTypes::Unchoke as u8 => Ok(Some(PeerMessage::Unchoke)),
