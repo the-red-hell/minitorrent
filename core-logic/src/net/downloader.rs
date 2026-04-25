@@ -32,7 +32,7 @@ where
             .map_err(BitTorrenterError::HandshakeFailed)?;
 
         handshake_peer
-            .process_incoming_data()
+            .process_incoming_data(&mut self.fs)
             .await
             .map_err(BitTorrenterError::TcpError)?;
 

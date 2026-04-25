@@ -5,7 +5,7 @@ use embedded_io_async::{Read, Write};
 use crate::{
     TcpConnector,
     core::InfoHash,
-    peer::{Handshaken, NotHandshaken, PEER_ID, Peer},
+    peer::{Handshaken, NotHandshaken, PEER_ID, Peer, PieceState},
 };
 
 impl<'a, NET> Peer<'a, NET, NotHandshaken>
@@ -44,6 +44,7 @@ where
             connection: self.connection,
             _handshake_state: PhantomData,
             state: crate::peer::State::ChokedNotInterested,
+            piece: PieceState::default(),
         })
     }
 }
