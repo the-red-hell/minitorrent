@@ -4,8 +4,8 @@ use crate::{
     TcpConnector,
     fs::{FileSystem, FileSystemExt, VolumeMgr},
     peer::{
-        BLOCK_SIZE, Handshaken, Peer, PieceState, State, buf_reader::BufReader,
-        messages::messages::PeerMessage,
+        BLOCK_SIZE, Handshaken, NUM_BLOCKS_PER_PIECE, Peer, PieceState, State,
+        buf_reader::BufReader, messages::messages::PeerMessage,
     },
 };
 
@@ -104,7 +104,7 @@ where
                 );
 
                 // wrong index
-                if index != self.piece.index() {
+                if *index != self.piece.index() {
                     defmt_or_log::warn!(
                         "Received block for piece {}, but currently processing piece {}. Ignoring block.",
                         index,
@@ -126,10 +126,21 @@ where
 
                     // TODO: check SHA1
 
-                    fs.write_to_opened_file(&self.piece.piece.concat())
+                    // TODO: seek?
+
+                    fs.write_to_opened_file(self.piece.get_piece_data())
                         .await
                         .expect("Failed to write piece to file system");
-                    self.piece = PieceState::new(self.piece.index() + 1); // TODO: maybe last piece
+
+                    // check whether we can move on to the next piece
+                    let index = if self.piece.num_blocks() == self.piece.have_count() {
+                        self.piece.index() + 1
+                    } else {
+                        self.piece.index()
+                    };
+
+                    self.piece =
+                        PieceState::new(index, self.file_size(), [false; NUM_BLOCKS_PER_PIECE]);
                 }
             }
             (State::UnchokedInterested, PeerMessage::Choke) => {
