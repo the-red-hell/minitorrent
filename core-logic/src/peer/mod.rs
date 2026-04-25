@@ -26,6 +26,7 @@ where
     NET: TcpConnector + 'a,
 {
     state: State,
+    piece: PieceState<5>, // TODO: don't hardcode number of blocks
     connection: NET::Connection<'a>,
     _handshake_state: PhantomData<HandshakeState>,
 }
@@ -37,8 +38,9 @@ where
     pub(crate) fn new(connection: NET::Connection<'a>) -> Self {
         Self {
             connection,
-            state: State::default(),
             _handshake_state: PhantomData,
+            state: State::default(),
+            piece: PieceState::default(),
         }
     }
 
@@ -62,3 +64,64 @@ pub(super) enum State {
 pub(super) struct Handshaken;
 #[defmt_or_log::derive_format_or_debug]
 pub(super) struct NotHandshaken;
+
+struct PieceState<const N: usize> {
+    index: usize,
+    have: [bool; N],
+    piece: [[u8; BLOCK_SIZE]; N],
+    /// used to write the piece to the file system once it's complete, (last one might not be full)
+    len: usize,
+}
+
+impl<const N: usize> Default for PieceState<N> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            index: 0,
+            have: [false; N],
+            piece: [[0; BLOCK_SIZE]; N],
+            len: 0,
+        }
+    }
+}
+
+impl<const N: usize> PieceState<N> {
+    #[inline]
+    // TODO: we don't even know how much blocks the piece contains at all
+    const fn new(index: usize) -> Self {
+        Self {
+            index,
+            have: [false; N],
+            piece: [[0; BLOCK_SIZE]; N],
+            len: 0,
+        }
+    }
+
+    #[inline]
+    const fn len(&self) -> usize {
+        self.len
+    }
+
+    #[inline]
+    pub fn is_complete(&self) -> bool {
+        self.have.iter().all(|&have_block| have_block)
+    }
+
+    #[inline]
+    pub const fn index(&self) -> usize {
+        self.index
+    }
+
+    #[inline]
+    pub fn add_block(&mut self, begin: usize, block_data: &[u8]) {
+        let block_index = begin / BLOCK_SIZE;
+        self.piece[block_index][..block_data.len()].copy_from_slice(block_data);
+        self.mark_block_as_have(block_index);
+        self.len += block_data.len();
+    }
+
+    #[inline]
+    const fn mark_block_as_have(&mut self, block_index: usize) {
+        self.have[block_index] = true;
+    }
+}

@@ -23,20 +23,10 @@ async fn integration_test() {
     );
 
     let mut rx_buf = vec![0u8; 1024 * 10];
-    let response = bittorrenter
-        .make_tracker_request(&metadata, &mut rx_buf)
+    let mut downloader = bittorrenter
+        .into_downloader(&metadata, &mut rx_buf)
         .await
         .unwrap();
 
-    assert!(response > 0);
-
-    // print tracker response as string for debugging
-    let response_str = String::from_utf8_lossy(&rx_buf[..response]);
-    println!("Tracker response:\n{}", response_str);
-
-    let tracker_response = TrackerResponse::parse(&rx_buf[..response]).unwrap();
-    assert_eq!(tracker_response.peers.len(), 3);
-    dbg!(tracker_response);
-
-    // Further processing of the response can be done here
+    downloader.download().await.unwrap();
 }

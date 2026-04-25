@@ -2,8 +2,10 @@ use embedded_io_async::{Read, Write};
 
 use crate::{
     TcpConnector,
+    fs::{FileSystem, FileSystemExt, VolumeMgr},
     peer::{
-        BLOCK_SIZE, Handshaken, Peer, State, buf_reader::BufReader, messages::incoming::PeerMessage,
+        BLOCK_SIZE, Handshaken, Peer, PieceState, State, buf_reader::BufReader,
+        messages::messages::PeerMessage,
     },
 };
 
@@ -14,7 +16,10 @@ where
     /// main entry
     /// - reads data
     /// - parses & handles messages
-    pub(crate) async fn process_incoming_data(&mut self) -> Result<(), NET::Error> {
+    pub(crate) async fn process_incoming_data(
+        &mut self,
+        fs: &mut FileSystem<impl VolumeMgr>,
+    ) -> Result<(), NET::Error> {
         let mut buf = BufReader::<
             {
                 BLOCK_SIZE + 4 /* length */ + 1 /* id */
@@ -56,7 +61,7 @@ where
             };
 
             // process the message
-            self.process(&msg).await?;
+            self.process(&msg, fs).await?;
 
             // reset the buffer for the next message
             buf.reset();
@@ -65,7 +70,11 @@ where
         Ok(())
     }
     /// Processes an incoming peer message.
-    async fn process(&mut self, msg: &PeerMessage<'_>) -> Result<(), NET::Error> {
+    async fn process(
+        &mut self,
+        msg: &PeerMessage<'_>,
+        fs: &mut FileSystem<impl VolumeMgr>,
+    ) -> Result<(), NET::Error> {
         match (self.state, msg) {
             (State::NotHandshaken, _) => {
                 unreachable!("this method isn't callable here");
@@ -83,11 +92,46 @@ where
             (
                 State::UnchokedInterested,
                 PeerMessage::Piece {
-                    index: _index,
-                    begin: _begin,
-                    block: _block,
+                    index,
+                    begin,
+                    block,
                 },
-            ) => {}
+            ) => {
+                defmt_or_log::info!(
+                    "Received block at begin: {} from piece {} from peer",
+                    begin,
+                    index
+                );
+
+                // wrong index
+                if index != self.piece.index() {
+                    defmt_or_log::warn!(
+                        "Received block for piece {}, but currently processing piece {}. Ignoring block.",
+                        index,
+                        self.piece.index()
+                    );
+                    return Ok(());
+                }
+
+                // add block
+                self.piece.add_block(*begin as usize, block);
+                // TODO: update SHA1
+
+                // check whether complete
+                if self.piece.is_complete() {
+                    defmt_or_log::info!(
+                        "Received complete piece {}, writing to file system...",
+                        self.piece.index()
+                    );
+
+                    // TODO: check SHA1
+
+                    fs.write_to_opened_file(&self.piece.piece.concat())
+                        .await
+                        .expect("Failed to write piece to file system");
+                    self.piece = PieceState::new(self.piece.index() + 1); // TODO: maybe last piece
+                }
+            }
             (State::UnchokedInterested, PeerMessage::Choke) => {
                 self.state = State::ChokedInterested;
             }

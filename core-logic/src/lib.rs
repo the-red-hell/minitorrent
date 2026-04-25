@@ -11,3 +11,4 @@ mod peer;
 pub use bittorrenter::{BitTorrenter, error::BitTorrenterError};
 pub use core::metainfo::{Info, MetaInfoFile};
 pub use net::tcp::TcpConnector;
+pub use peer::BLOCK_SIZE;
