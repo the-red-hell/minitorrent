@@ -88,4 +88,18 @@ impl<const MAX_N: usize> PieceState<MAX_N> {
     const fn mark_block_as_have(&mut self, block_index: usize) {
         self.have[block_index] = true;
     }
+
+    /// increments the piece-index and resets the have array and the length
+    #[inline]
+    pub(crate) const fn increment(&mut self) {
+        self.index += 1;
+        self.reset();
+    }
+
+    #[inline]
+    /// resets the have array and the length
+    pub(crate) const fn reset(&mut self) {
+        self.have = [false; MAX_N];
+        self.len = 0;
+    }
 }
