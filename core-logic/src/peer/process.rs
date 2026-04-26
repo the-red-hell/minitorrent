@@ -133,14 +133,11 @@ where
                         .expect("Failed to write piece to file system");
 
                     // check whether we can move on to the next piece
-                    let index = if self.piece.num_blocks() == self.piece.have_count() {
-                        self.piece.index() + 1
+                    if self.piece.num_blocks() == self.piece.have_count() {
+                        self.piece.increment();
                     } else {
-                        self.piece.index()
+                        self.piece.reset();
                     };
-
-                    self.piece =
-                        PieceState::new(index, self.file_size(), [false; NUM_BLOCKS_PER_PIECE]);
                 }
             }
             (State::UnchokedInterested, PeerMessage::Choke) => {
