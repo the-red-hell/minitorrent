@@ -19,7 +19,7 @@ where
     ) -> Result<(), NET::Error> {
         let mut buf = BufReader::<
             {
-                BLOCK_SIZE + 4 /* length */ + 1 /* id */
+                BLOCK_SIZE as usize + 4 /* length */ + 1 /* id */
             },
         >::new();
 
@@ -58,7 +58,7 @@ where
             };
 
             // process the message
-            self.process(&msg, fs).await?;
+            self.process_msg(&msg, fs).await?;
 
             // reset the buffer for the next message
             buf.reset();
@@ -67,7 +67,7 @@ where
         Ok(())
     }
     /// Processes an incoming peer message.
-    async fn process(
+    async fn process_msg(
         &mut self,
         msg: &PeerMessage<'_>,
         fs: &mut FileSystem<impl VolumeMgr>,
@@ -159,7 +159,7 @@ where
         }
 
         // add block
-        self.piece.add_block(begin as usize, block);
+        self.piece.add_block(begin, block);
         // TODO: update SHA1
 
         // check whether complete
@@ -177,12 +177,8 @@ where
                 .await
                 .expect("Failed to write piece to file system");
 
-            // check whether we can move on to the next piece
-            if self.piece.num_blocks() == self.piece.have_count() {
-                self.piece.increment();
-            } else {
-                self.piece.reset();
-            };
+            // move onto the next piece
+            self.piece.increment();
         }
 
         Ok(())

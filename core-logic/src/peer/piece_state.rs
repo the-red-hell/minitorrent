@@ -1,74 +1,59 @@
+extern crate alloc;
+
+use alloc::boxed::Box;
+use alloc::vec;
+
 use crate::BLOCK_SIZE;
 
-/// A struct representing the state of a piece being downloaded from a peer. (1 -> 1)
-/// We need some weird workarounds to make it const.
-/// the parameter MAX_N represents the number of blocks to receive at which we will definitely write to disk
-pub(super) struct PieceState<const MAX_N: usize> {
+/// Maximum number of blocks to buffer in memory per piece before writing to disk.
+// TODO: if it's more than that, the current implementation of `PieceState` won't work
+pub(super) const MAX_BLOCKS: u32 = 5;
+
+/// Represents the state of a piece being downloaded from a peer.
+/// The block data is heap-allocated once and reused across pieces.
+pub(super) struct PieceState {
     index: u32,
-    have: [bool; MAX_N],
-    piece: [[u8; BLOCK_SIZE]; MAX_N],
-    /// used to write the piece to the file system once it's complete, (last one might not be full, so we can't just flatten the piece array)
-    len_bytes: usize,
-    /// used to check if we received all the blocks for a piece, or at least MAX_N blocks, since we don't know how many blocks the piece contains at all
-    num_blocks: usize,
+    /// bitfield tracking which blocks have been received
+    have: u32,
+    /// flat buffer holding block data, allocated once (sized for the largest piece)
+    piece: Box<[u8]>,
+    /// number of bytes received so far for this piece
+    len_bytes: u32,
+    /// actual number of blocks for this piece (recomputed on increment)
+    num_blocks: u32,
+    /// size of the current piece in bytes (last piece of the file may be smaller)
+    piece_size: u32,
+    /// standard piece size from the torrent metadata
+    piece_length: u32,
+    /// total file size
+    file_size: u32,
 }
 
-impl<const MAX_N: usize> PieceState<MAX_N> {
-    #[inline]
-    // TODO: we don't even know how much blocks the piece contains at all
-    /// Creates a new `PieceState` for the given piece index and file size.
-    /// If there are already blocks received for the piece, they can be passed in the `have` array.
-    pub fn new(index: u32, file_size: u32, have: [bool; MAX_N]) -> Self {
-        let num_blocks = file_size.div_ceil(BLOCK_SIZE as u32) as usize;
-        let num_blocks = if num_blocks > MAX_N {
-            MAX_N
-        } else {
-            num_blocks
-        };
-
-        // if we already have some blocks, calculate the length of the piece that we have
-        let have_count = have
-            .iter()
-            .take(num_blocks)
-            .filter(|&&have_block| have_block)
-            .count();
-        let len_bytes = have_count * BLOCK_SIZE;
-
+impl PieceState {
+    pub fn new(index: u32, piece_length: u32, file_size: u32) -> Self {
+        let piece_size = piece_size_for(index, piece_length, file_size);
+        let num_blocks = (piece_size.div_ceil(BLOCK_SIZE)).min(MAX_BLOCKS);
         Self {
             index,
-            have,
-            piece: [[0; BLOCK_SIZE]; MAX_N],
-            len_bytes,
+            have: 0,
+            // since this is called only once for the first time, `num_blocks` corresponds to the largest number of blocks
+            piece: vec![0u8; (num_blocks * BLOCK_SIZE) as usize].into_boxed_slice(),
+            len_bytes: 0,
             num_blocks,
+            piece_size,
+            piece_length,
+            file_size: total_length,
         }
     }
 
     #[inline]
-    pub const fn num_blocks(&self) -> usize {
-        self.num_blocks
-    }
-
-    #[inline]
-    pub fn have_count(&self) -> usize {
-        self.have
-            .iter()
-            .take(self.num_blocks)
-            .filter(|&&have_block| have_block)
-            .count()
-    }
-
-    #[inline]
     pub fn get_piece_data(&self) -> &[u8] {
-        &self.piece.as_flattened()[..self.len_bytes]
+        &self.piece[..self.len_bytes as usize]
     }
 
-    /// Checks whether we received all the blocks for a piece or MAX_N blocks
     #[inline]
-    pub fn is_complete(&self) -> bool {
-        self.have
-            .iter()
-            .take(self.num_blocks)
-            .all(|&have_block| have_block)
+    pub const fn is_complete(&self) -> bool {
+        self.have.count_ones() == self.num_blocks
     }
 
     #[inline]
@@ -77,45 +62,49 @@ impl<const MAX_N: usize> PieceState<MAX_N> {
     }
 
     #[inline]
-    pub fn add_block(&mut self, begin: usize, block_data: &[u8]) {
-        let block_index = begin / BLOCK_SIZE;
-        self.piece[block_index][..block_data.len()].copy_from_slice(block_data);
-        self.mark_block_as_have(block_index);
-        self.len_bytes += block_data.len();
+    pub fn add_block(&mut self, begin: u32, block_data: &[u8]) {
+        let begin = begin as usize;
+        self.piece[begin..begin + block_data.len()].copy_from_slice(block_data);
+        self.have |= 1u32 << (begin / BLOCK_SIZE as usize);
+        self.len_bytes += block_data.len() as u32;
     }
 
     pub fn get_next_block_request(&self) -> Option<(u32, u32, u32)> {
         for block_index in 0..self.num_blocks {
-            if !self.have[block_index] {
+            if self.have & (1u32 << block_index) == 0 {
+                // we don't have this block, request it
                 let begin = block_index * BLOCK_SIZE;
                 let block_length = if block_index != self.num_blocks - 1 {
                     BLOCK_SIZE
                 } else {
                     // last block might be smaller than BLOCK_SIZE
-                    (self.len_bytes - begin).min(BLOCK_SIZE)
+                    self.piece_size - begin
                 };
-                return Some((self.index, begin as u32, block_length as u32));
+                return Some((self.index, begin, block_length));
             }
         }
         None
     }
 
+    /// Increments the piece index and resets state for the next piece.
+    /// Recomputes `piece_size` and `num_blocks` since the last piece may be smaller.
     #[inline]
-    const fn mark_block_as_have(&mut self, block_index: usize) {
-        self.have[block_index] = true;
-    }
-
-    /// increments the piece-index and resets the have array and the length
-    #[inline]
-    pub(crate) const fn increment(&mut self) {
+    pub(crate) fn increment(&mut self) {
         self.index += 1;
+        self.piece_size = piece_size_for(self.index, self.piece_length, self.file_size);
+        self.num_blocks = (self.piece_size.div_ceil(BLOCK_SIZE)).min(MAX_BLOCKS);
         self.reset();
     }
 
+    /// Resets the received state without changing the piece index.
     #[inline]
-    /// resets the have array and the length
-    pub(crate) const fn reset(&mut self) {
-        self.have = [false; MAX_N];
+    fn reset(&mut self) {
+        self.have = 0;
         self.len_bytes = 0;
     }
+}
+
+fn piece_size_for(index: u32, piece_length: u32, total_length: u32) -> u32 {
+    let offset = index * piece_length;
+    (total_length - offset).min(piece_length)
 }

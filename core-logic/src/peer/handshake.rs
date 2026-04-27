@@ -5,7 +5,7 @@ use embedded_io_async::{Read, Write};
 use crate::{
     TcpConnector,
     core::InfoHash,
-    peer::{Handshaken, NUM_BLOCKS_PER_PIECE, NotHandshaken, PEER_ID, Peer, PieceState},
+    peer::{Handshaken, NotHandshaken, PEER_ID, Peer},
 };
 
 impl<'a, NET> Peer<'a, NET, NotHandshaken>
@@ -40,13 +40,11 @@ where
 
         // TODO: send bitfield?
 
-        let file_size = self.file_size();
         Ok(Peer {
             connection: self.connection,
             _handshake_state: PhantomData,
             state: crate::peer::State::ChokedNotInterested,
-            piece: PieceState::new(0, file_size, [false; NUM_BLOCKS_PER_PIECE]),
-            file_size,
+            piece: self.piece,
         })
     }
 }

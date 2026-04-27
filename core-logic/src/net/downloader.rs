@@ -23,6 +23,7 @@ where
             &mut self.net,
             &mut self.socket_buffers,
             self.state.get_peers()[2],
+            self.state.get_piece_length(),
             self.state.get_total_length(),
         )
         .await?;
@@ -66,6 +67,7 @@ async fn connect_to_peer<'a, NET, V, const RX: usize, const TX: usize>(
     net: &'a mut NET,
     socket_buffers: &'a mut SocketBuffers<RX, TX>,
     peer_addr: core::net::SocketAddrV4,
+    piece_length: u32,
     file_size: u32,
 ) -> Result<Peer<'a, NET, NotHandshaken>, BitTorrenterError<NET, V>>
 where
@@ -80,5 +82,5 @@ where
         .map_err(BitTorrenterError::TcpError)?;
 
     defmt_or_log::info!("Connected to peer at: {:?}", peer_addr);
-    Ok(Peer::new(conn, file_size))
+    Ok(Peer::new(conn, piece_length, file_size))
 }
