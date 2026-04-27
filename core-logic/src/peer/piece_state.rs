@@ -42,7 +42,7 @@ impl PieceState {
             num_blocks,
             piece_size,
             piece_length,
-            file_size: total_length,
+            file_size,
         }
     }
 
@@ -69,6 +69,7 @@ impl PieceState {
         self.len_bytes += block_data.len() as u32;
     }
 
+    /// returns the index, begin and length of the next block to request, or None if all blocks have been received
     pub fn get_next_block_request(&self) -> Option<(u32, u32, u32)> {
         for block_index in 0..self.num_blocks {
             if self.have & (1u32 << block_index) == 0 {
@@ -90,21 +91,79 @@ impl PieceState {
     /// Recomputes `piece_size` and `num_blocks` since the last piece may be smaller.
     #[inline]
     pub(crate) fn increment(&mut self) {
+        if (self.index() + 1) * self.piece_length >= self.file_size {
+            // no more pieces to request
+            return;
+        }
         self.index += 1;
         self.piece_size = piece_size_for(self.index, self.piece_length, self.file_size);
-        self.num_blocks = (self.piece_size.div_ceil(BLOCK_SIZE)).min(MAX_BLOCKS);
+        self.num_blocks = if self.piece_size.div_ceil(BLOCK_SIZE) < MAX_BLOCKS {
+            // workaround, since `min()` isn't const yet
+            self.piece_size.div_ceil(BLOCK_SIZE)
+        } else {
+            MAX_BLOCKS
+        };
         self.reset();
     }
 
     /// Resets the received state without changing the piece index.
     #[inline]
-    fn reset(&mut self) {
+    const fn reset(&mut self) {
         self.have = 0;
         self.len_bytes = 0;
     }
 }
 
-fn piece_size_for(index: u32, piece_length: u32, total_length: u32) -> u32 {
+#[inline]
+const fn piece_size_for(index: u32, piece_length: u32, file_size: u32) -> u32 {
     let offset = index * piece_length;
-    (total_length - offset).min(piece_length)
+    // workaround, since `min()` isn't const yet
+    if file_size - offset < piece_length {
+        file_size - offset
+    } else {
+        piece_length
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_piece_state() {
+        let mut piece_state = PieceState::new(0, 1024, 2500);
+        assert_eq!(piece_state.piece_size, 1024);
+        assert_eq!(piece_state.num_blocks, 1);
+        assert_eq!(piece_state.is_complete(), false);
+        assert_eq!(piece_state.get_next_block_request(), Some((0, 0, 1024)));
+
+        // Simulate receiving blocks
+        // receive first and only block for piece 0
+        piece_state.add_block(0, &[0u8; 1024]);
+        assert_eq!(piece_state.is_complete(), true);
+        piece_state.increment();
+        assert_eq!(piece_state.index(), 1);
+        assert_eq!(piece_state.piece_size, 1024);
+        assert_eq!(piece_state.num_blocks, 1);
+        assert_eq!(piece_state.is_complete(), false);
+        assert_eq!(piece_state.get_next_block_request(), Some((1, 0, 1024)));
+
+        // receive first and only block for piece 1
+        piece_state.add_block(1, &[0u8; 1024]);
+        assert_eq!(piece_state.is_complete(), true);
+        piece_state.increment();
+        assert_eq!(piece_state.index(), 2);
+        assert_eq!(piece_state.piece_size, 452); // last piece is smaller
+        assert_eq!(piece_state.num_blocks, 1);
+        assert_eq!(piece_state.is_complete(), false);
+        assert_eq!(piece_state.get_next_block_request(), Some((2, 0, 452)));
+
+        // receive last block for piece 2
+        piece_state.add_block(0, &[0u8; 452]);
+        assert_eq!(piece_state.is_complete(), true);
+
+        // no more pieces to request
+        piece_state.increment();
+        assert_eq!(piece_state.get_next_block_request(), None);
+    }
 }
