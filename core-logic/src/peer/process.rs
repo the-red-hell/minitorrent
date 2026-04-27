@@ -87,7 +87,7 @@ where
             }
             (State::ChokedInterested, PeerMessage::Unchoke) => {
                 self.state = State::UnchokedInterested;
-                // TODO: send requests for pieces
+                self.send_request().await?;
             }
             (
                 State::UnchokedInterested,
@@ -97,53 +97,95 @@ where
                     block,
                 },
             ) => {
-                defmt_or_log::info!(
-                    "Received block at begin: {} from piece {} from peer",
-                    begin,
-                    index
-                );
-
-                // wrong index
-                if *index != self.piece.index() {
-                    defmt_or_log::warn!(
-                        "Received block for piece {}, but currently processing piece {}. Ignoring block.",
-                        index,
-                        self.piece.index()
-                    );
-                    return Ok(());
-                }
-
-                // add block
-                self.piece.add_block(*begin as usize, block);
-                // TODO: update SHA1
-
-                // check whether complete
-                if self.piece.is_complete() {
-                    defmt_or_log::info!(
-                        "Received complete piece {}, writing to file system...",
-                        self.piece.index()
-                    );
-
-                    // TODO: check SHA1
-
-                    // TODO: seek?
-
-                    fs.write_to_opened_file(self.piece.get_piece_data())
-                        .await
-                        .expect("Failed to write piece to file system");
-
-                    // check whether we can move on to the next piece
-                    if self.piece.num_blocks() == self.piece.have_count() {
-                        self.piece.increment();
-                    } else {
-                        self.piece.reset();
-                    };
-                }
+                self.handle_piece_message(*index, *begin, block, fs).await?;
+                self.send_request().await?;
             }
             (State::UnchokedInterested, PeerMessage::Choke) => {
                 self.state = State::ChokedInterested;
             }
             _ => todo!(),
+        }
+
+        Ok(())
+    }
+
+    async fn send_request(&mut self) -> Result<(), NET::Error> {
+        let (index, begin, length) = match self.piece.get_next_block_request() {
+            Some(req) => req,
+            None => {
+                defmt_or_log::info!(
+                    "No more blocks to request for piece {}, waiting for piece to be complete before requesting the next one.",
+                    self.piece.index()
+                );
+                return Ok(());
+            }
+        };
+        let req_msg = PeerMessage::Request {
+            index,
+            begin,
+            length,
+        };
+
+        self.connection()
+            .write_all(&req_msg.as_bittorrent_bytes())
+            .await?;
+
+        defmt_or_log::trace!(
+            "Requested block at begin: {} from piece {} from peer",
+            begin,
+            index
+        );
+        Ok(())
+    }
+
+    async fn handle_piece_message(
+        &mut self,
+        index: u32,
+        begin: u32,
+        block: &[u8],
+        fs: &mut FileSystem<impl VolumeMgr>,
+    ) -> Result<(), NET::Error> {
+        defmt_or_log::trace!(
+            "Received block at begin: {} from piece {} from peer",
+            begin,
+            index
+        );
+
+        // wrong index
+        if index != self.piece.index() {
+            defmt_or_log::warn!(
+                "Received block for piece {}, but currently processing piece {}. Ignoring block.",
+                index,
+                self.piece.index()
+            );
+            return Ok(());
+        }
+
+        // add block
+        self.piece.add_block(begin as usize, block);
+        // TODO: update SHA1
+
+        // check whether complete
+        if self.piece.is_complete() {
+            defmt_or_log::info!(
+                "Received complete piece {}, writing to file system...",
+                self.piece.index()
+            );
+
+            // TODO: check SHA1
+
+            // TODO: seek?
+
+            fs.write_to_opened_file(self.piece.get_piece_data())
+                .await
+                .expect("Failed to write piece to file system");
+
+            // check whether we can move on to the next piece
+            if self.piece.num_blocks() == self.piece.have_count() {
+                self.piece.increment();
+            } else {
+                self.piece.reset();
+            };
         }
 
         Ok(())
