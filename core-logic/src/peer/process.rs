@@ -3,10 +3,7 @@ use embedded_io_async::{Read, Write};
 use crate::{
     TcpConnector,
     fs::{FileSystem, FileSystemExt, VolumeMgr},
-    peer::{
-        BLOCK_SIZE, Handshaken, NUM_BLOCKS_PER_PIECE, Peer, PieceState, State,
-        buf_reader::BufReader, messages::messages::PeerMessage,
-    },
+    peer::{BLOCK_SIZE, Handshaken, Peer, State, buf_reader::BufReader, messages::PeerMessage},
 };
 
 impl<'a, NET> Peer<'a, NET, Handshaken>
