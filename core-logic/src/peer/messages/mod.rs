@@ -154,15 +154,11 @@ impl<'a> PeerMessage<'a> {
             b if len == 1 && b == PeerMessageTypes::NotInterested as u8 => {
                 Ok(Some(PeerMessage::NotInterested))
             }
-            b if len == 5 && b == PeerMessageTypes::Have as u8 => parse_have_message(payload),
-            b if len >= 1 && b == PeerMessageTypes::Bitfield as u8 => {
-                parse_bitfield_message(payload)
-            }
-            b if len == 13 && b == PeerMessageTypes::Request as u8 => {
-                parse_request_message(payload)
-            }
-            b if len >= 13 && b == PeerMessageTypes::Piece as u8 => parse_piece_message(payload),
-            b if len == 13 && b == PeerMessageTypes::Cancel as u8 => parse_cancel_message(payload),
+            b if b == PeerMessageTypes::Have as u8 => parse_have_message(payload),
+            b if b == PeerMessageTypes::Bitfield as u8 => parse_bitfield_message(payload),
+            b if b == PeerMessageTypes::Request as u8 => parse_request_message(payload),
+            b if b == PeerMessageTypes::Piece as u8 => parse_piece_message(payload),
+            b if b == PeerMessageTypes::Cancel as u8 => parse_cancel_message(payload),
             b => Err(MessageError::UnknownMessageType(b)),
         }
     }
@@ -386,23 +382,24 @@ mod tests {
         let index = 1u32.to_be_bytes();
         let begin = 2u32.to_be_bytes();
         let block = vec![0u8; 4];
-        buf.remaining_mut()[..4].copy_from_slice(&17u32.to_be_bytes());
+        buf.remaining_mut()[..4].copy_from_slice(&13u32.to_be_bytes());
         buf.remaining_mut()[4] = PeerMessageTypes::Piece as u8;
         buf.remaining_mut()[5..9].copy_from_slice(&index);
         buf.remaining_mut()[9..13].copy_from_slice(&begin);
         buf.remaining_mut()[13..17].copy_from_slice(&block);
         buf.advance_n(17);
 
-        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+        let msg = PeerMessage::from_bytes(&mut buf);
 
         assert!(matches!(
             msg,
-            PeerMessage::Piece {
+            Ok(Some(PeerMessage::Piece {
                 index: 1,
                 begin: 2,
-                block: [0, 0, 0, 0]
-            }
-        ));
+                block: &[0, 0, 0, 0]
+            }))
+        ),);
+
         // TODO: test block
         // assert_eq!(
         //     msg.as_bittorrent_bytes().as_slice(),
