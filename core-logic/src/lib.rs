@@ -14,3 +14,4 @@ pub use core::metainfo::{Info, MetaInfoFile};
 pub use hash::Sha1Hasher;
 pub use net::tcp::TcpConnector;
 pub use peer::BLOCK_SIZE;
+pub use peer::messages::error::MessageError;
