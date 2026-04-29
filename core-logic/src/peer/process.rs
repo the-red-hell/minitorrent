@@ -61,7 +61,9 @@ where
             );
 
             // process the message
-            self.process_msg(msg, fs).await?;
+            if self.process_msg(msg, fs).await? {
+                break;
+            }
 
             // reset the buffer for the next message
             if is_finished {
@@ -72,11 +74,13 @@ where
         Ok(())
     }
     /// Processes an incoming peer message.
+    ///
+    /// Returns Ok(true) if we're finished.
     async fn process_msg(
         &mut self,
         msg: Option<PeerMessage<'_>>,
         fs: &mut FileSystem<impl VolumeMgr>,
-    ) -> Result<(), NET::Error> {
+    ) -> Result<bool, NET::Error> {
         match (self.state, msg) {
             (State::NotHandshaken, _) => {
                 unreachable!("this method isn't callable here");
@@ -103,6 +107,10 @@ where
                 }),
             ) => {
                 self.handle_piece_message(index, begin, block, fs).await?;
+                // move onto the next piece
+                if !self.piece.increment() {
+                    return Ok(true);
+                }
                 self.send_request().await?;
             }
             (State::UnchokedInterested, Some(PeerMessage::Choke)) => {
@@ -116,7 +124,7 @@ where
             }
         }
 
-        Ok(())
+        Ok(false)
     }
 
     async fn send_request(&mut self) -> Result<(), NET::Error> {
@@ -190,9 +198,6 @@ where
                 .await
                 .expect("Failed to write piece to file system");
             fs.flush().unwrap(); // TODO: handle error
-
-            // move onto the next piece
-            self.piece.increment();
         }
 
         Ok(())

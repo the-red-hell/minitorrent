@@ -89,11 +89,13 @@ impl PieceState {
 
     /// Increments the piece index and resets state for the next piece.
     /// Recomputes `piece_size` and `num_blocks` since the last piece may be smaller.
+    ///
+    /// Returns whether there are more pieces to request.
     #[inline]
-    pub(crate) fn increment(&mut self) {
+    pub(crate) fn increment(&mut self) -> bool {
         if (self.index() + 1) * self.piece_length >= self.file_size {
             // no more pieces to request
-            return;
+            return false;
         }
         self.index += 1;
         self.piece_size = piece_size_for(self.index, self.piece_length, self.file_size);
@@ -104,6 +106,7 @@ impl PieceState {
             MAX_BLOCKS
         };
         self.reset();
+        true
     }
 
     /// Resets the received state without changing the piece index.

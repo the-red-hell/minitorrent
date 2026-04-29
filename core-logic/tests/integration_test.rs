@@ -1,5 +1,5 @@
 use crate::bittorrenter_helper::init_bittorrenter;
-use core_logic::core::metainfo::MetaInfoFile;
+use core_logic::{core::metainfo::MetaInfoFile, fs::FileSystemExt};
 
 mod bittorrenter_helper;
 mod fs_helper;
@@ -29,4 +29,14 @@ async fn integration_test() {
         .unwrap();
 
     downloader.download().await.unwrap();
+
+    downloader.fs().go_to_root_dir();
+    downloader
+        .fs()
+        .open_file("sample.txt", embedded_sdmmc::Mode::ReadOnly)
+        .unwrap();
+    let mut buf = vec![0u8; 92063];
+    downloader.fs().read_to_end(&mut buf).await.unwrap();
+    assert!(buf.starts_with(b"## What Is a Hacker?"));
+    assert!(buf.ends_with(b"that it could be inside `HourlyEmployee`."));
 }
