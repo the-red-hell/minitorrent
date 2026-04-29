@@ -19,49 +19,53 @@ where
     ) -> Result<(), NET::Error> {
         let mut buf = BufReader::<
             {
-                BLOCK_SIZE as usize + 4 /* length */ + 1 /* id */
+                BLOCK_SIZE as usize + 4 /* length */ + 1 /* id */ + 8 /* index, begin of payload */
             },
         >::new();
 
         loop {
             // read data from the peer connection into the buffer
-            match self.connection().read(buf.remaining_mut()).await {
+            let bytes_read = match self.connection().read(buf.remaining_mut()).await {
                 Ok(0) => {
-                    defmt_or_log::info!("Peer closed the connection");
-                    break; // TODO
+                    defmt_or_log::info!("EOF");
+                    0
                 }
-                Ok(_) => (),
+                Ok(len) => len,
                 Err(e) => {
                     defmt_or_log::error!("Failed to read from peer: {:?}", e);
                     break; // TODO
                 }
-            }
+            };
 
             // advance the buffer's length by the number of bytes read
-            let bytes_read = buf.len();
             buf.advance_n(bytes_read);
 
             // try to parse a message from the buffer
-            let msg = match PeerMessage::from_bytes(&mut buf) {
+            let (msg, is_finished) = match PeerMessage::from_bytes(&mut buf) {
                 Ok(Some(msg)) => {
                     defmt_or_log::info!("Received message from peer: {:?}", msg);
-                    msg
+                    (Some(msg), true)
                 }
-                Ok(None) => continue,
+                Ok(None) => {
+                    defmt_or_log::info!("Waiting for more data...");
+                    (None, false)
+                }
                 Err(e) => {
                     defmt_or_log::warn!(
                         "Failed to parse peer message: {:?}. Ignoring and waiting for more data.",
                         e
                     );
-                    continue;
+                    (None, true)
                 }
             };
 
             // process the message
-            self.process_msg(&msg, fs).await?;
+            self.process_msg(msg, fs).await?;
 
             // reset the buffer for the next message
-            buf.reset();
+            if is_finished {
+                buf.reset();
+            }
         }
 
         Ok(())
@@ -69,7 +73,7 @@ where
     /// Processes an incoming peer message.
     async fn process_msg(
         &mut self,
-        msg: &PeerMessage<'_>,
+        msg: Option<PeerMessage<'_>>,
         fs: &mut FileSystem<impl VolumeMgr>,
     ) -> Result<(), NET::Error> {
         match (self.state, msg) {
@@ -77,30 +81,38 @@ where
                 unreachable!("this method isn't callable here");
             }
             (State::ChokedNotInterested, _) => {
+                defmt_or_log::info!("choked and not interested. Ignoring message.");
                 let msg = PeerMessage::Interested;
                 self.connection()
                     .write_all(&msg.as_bittorrent_bytes())
                     .await?;
+                self.state = State::ChokedInterested;
             }
-            (State::ChokedInterested, PeerMessage::Unchoke) => {
+            (State::ChokedInterested, Some(PeerMessage::Unchoke)) => {
+                defmt_or_log::info!("Peer unchoked us");
                 self.state = State::UnchokedInterested;
                 self.send_request().await?;
             }
             (
                 State::UnchokedInterested,
-                PeerMessage::Piece {
+                Some(PeerMessage::Piece {
                     index,
                     begin,
                     block,
-                },
+                }),
             ) => {
-                self.handle_piece_message(*index, *begin, block, fs).await?;
+                self.handle_piece_message(index, begin, block, fs).await?;
                 self.send_request().await?;
             }
-            (State::UnchokedInterested, PeerMessage::Choke) => {
+            (State::UnchokedInterested, Some(PeerMessage::Choke)) => {
                 self.state = State::ChokedInterested;
             }
-            _ => todo!(),
+            _ => {
+                defmt_or_log::warn!(
+                    "Received unexpected message while in state {:?}. Ignoring message.",
+                    self.state
+                );
+            }
         }
 
         Ok(())
@@ -127,7 +139,7 @@ where
             .write_all(&req_msg.as_bittorrent_bytes())
             .await?;
 
-        defmt_or_log::trace!(
+        defmt_or_log::info!(
             "Requested block at begin: {} from piece {} from peer",
             begin,
             index
