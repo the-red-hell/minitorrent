@@ -5,14 +5,14 @@ edition = "2024"
 
 [dependencies]
 bencode = { path = "../bencode" }
-defmt = "1.0.1"
+defmt = { version = "1.0.1", optional = true }
 sha1_smol = "1.0.1"
-embedded-sdmmc = { version = "0.9.0", default-features = false, features = [
-    "defmt-log",
-] }
-heapless = { version = "0.9.2", features = ["defmt"] }
+embedded-sdmmc = { version = "0.9.0", default-features = false }
+heapless = { version = "0.9.2" }
 embedded-nal-async = "0.9.0"
-embedded-io-async = { version = "0.7.0", features = ["defmt"] }
+embedded-io-async = { version = "0.7.0" }
+defmt-or-log = { version = "0.2.3" }
+log = { version = "0.4.29", optional = true }
 
 [dev-dependencies]
 chrono = "0.4"
@@ -22,3 +22,8 @@ mbrman = "0.6.1"
 hex = "0.4.3"
 reqwest = "0.13.1"
 embedded-io = "0.7.1"
+env_logger = "0.11"
+
+[features]
+defmt = ["defmt-or-log/defmt", "embedded-io-async/defmt", "bencode/defmt", "heapless/defmt", "embedded-sdmmc/defmt-log", "dep:defmt"]
+log = ["defmt-or-log/log", "bencode/log", "dep:log"]

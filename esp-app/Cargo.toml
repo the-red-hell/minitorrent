@@ -22,7 +22,7 @@ esp-rtos = { version = "0.2.0", features = [
 defmt = "1.0.1"
 esp-bootloader-esp-idf = { version = "0.4.0", features = ["defmt", "esp32c3"] }
 
-embassy-net = { version = "0.8.0", features = [
+embassy-net = { version = "0.9.0", features = [
   "defmt",
   "dhcpv4",
   "medium-ethernet",
@@ -30,13 +30,12 @@ embassy-net = { version = "0.8.0", features = [
   "udp",
   "dns",
 ] }
-embedded-io = { version = "0.7.1", features = ["defmt"] }
 esp-alloc = { version = "0.9.0", features = ["defmt"] }
 panic-rtt-target = { version = "0.2.0", features = ["defmt"] }
 rtt-target = { version = "0.6.2", features = ["defmt"] }
 # for more networking protocol support see https://crates.io/crates/edge-net
 embassy-executor = { version = "0.9.1", features = ["defmt"] }
-embassy-time = { version = "0.5.0", features = ["defmt"] }
+embassy-time = { version = "0.5.1", features = ["defmt"] }
 esp-radio = { version = "0.17.0", features = [
   "defmt",
   "esp-alloc",
@@ -62,8 +61,8 @@ smoltcp = { version = "0.12.0", default-features = false, features = [
 
 critical-section = "1.2.0"
 static_cell = "2.1.1"
-embassy-embedded-hal = "0.5.0"
-embassy-sync = "0.7.2"
+embassy-embedded-hal = "0.6.0"
+embassy-sync = "0.8.0"
 embedded-timers = "0.4.0"
 esp-println = { version = "0.16.1", default-features = false, features = [
   "esp32c3",
@@ -81,7 +80,7 @@ serde = { version = "1.0.228", default-features = false, features = [
   "derive",
 ] }
 
-core-logic = { path = "../core-logic" }
+core-logic = { path = "../core-logic", features = ["defmt"] }
 reqwless = { version = "0.14.0", default-features = false, features = [
   "defmt",
 ] }

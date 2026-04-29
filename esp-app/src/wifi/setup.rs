@@ -6,7 +6,7 @@ use esp_radio::Controller;
 
 use crate::wifi::{
     EspWifi,
-    network::{connection, net_task},
+    network::{net_task, wifi_connection_task},
 };
 
 pub(crate) async fn wifi_setup(
@@ -50,15 +50,15 @@ impl EspWifi {
         let seed = (rng.random() as u64) << 32 | rng.random() as u64;
 
         // Init network stack
-        static STACK_RESOURCES_CELL: static_cell::StaticCell<StackResources<3>> =
+        static STACK_RESOURCES_CELL: static_cell::StaticCell<StackResources<2>> =
             static_cell::StaticCell::new();
         let (stack, runner) = embassy_net::new(
             interfaces.sta,
             config,
-            STACK_RESOURCES_CELL.init(StackResources::<3>::new()),
+            STACK_RESOURCES_CELL.init(StackResources::<2>::new()),
             seed,
         );
-        spawner.spawn(connection(wifi_controller)).ok();
+        spawner.spawn(wifi_connection_task(wifi_controller)).ok();
         spawner.spawn(net_task(runner)).ok();
 
         Self::new(stack)

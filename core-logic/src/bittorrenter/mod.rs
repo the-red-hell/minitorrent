@@ -35,7 +35,12 @@ use crate::{
 /// // Create with custom buffer sizes
 /// let client: BitTorrenter<MyNet, MyVolMgr, 8192, 2048> = BitTorrenter::new(net, fs);
 /// ```
-#[derive(Debug, defmt::Format)]
+///
+/// So conceptually:
+/// - you give the `BitTorrenter` the SocketBuffer-size, it will create such buffers and own them when it needs to connect (to the tracker + peers)
+/// - the `BitTorrenter` calls the implementation of the `TcpConnector` trait, passing the buffers to it
+/// - in the current esp-app implementation, this will create `smoltcp`'s `TcpSocket` with the buffers, and smoltcp will use those buffers for the duration of the connection
+#[defmt_or_log::derive_format_or_debug]
 pub struct BitTorrenter<
     NET,
     V,
