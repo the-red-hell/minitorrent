@@ -184,10 +184,11 @@ where
             // TODO: check SHA1
 
             // TODO: seek?
-
+            assert!(fs.get_open_file().is_some());
             fs.write_to_opened_file(self.piece.get_piece_data())
                 .await
                 .expect("Failed to write piece to file system");
+            fs.flush().unwrap(); // TODO: handle error
 
             // move onto the next piece
             self.piece.increment();

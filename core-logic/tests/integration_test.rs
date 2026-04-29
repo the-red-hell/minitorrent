@@ -1,5 +1,5 @@
 use crate::bittorrenter_helper::init_bittorrenter;
-use core_logic::core::{metainfo::MetaInfoFile, tracker::TrackerResponse};
+use core_logic::core::metainfo::MetaInfoFile;
 
 mod bittorrenter_helper;
 mod fs_helper;

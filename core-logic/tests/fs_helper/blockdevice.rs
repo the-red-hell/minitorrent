@@ -41,7 +41,7 @@ impl BlockDevice for LinuxBlockDevice {
         for block in blocks.iter_mut() {
             self.file.borrow_mut().read_exact(&mut block.contents)?;
             if self.print_blocks {
-                println!("Read block {:?}: {:?}", start_block_idx, &block);
+                defmt_or_log::info!("Read block {:?}: {:?}", start_block_idx, &block);
             }
         }
         Ok(())
@@ -54,7 +54,7 @@ impl BlockDevice for LinuxBlockDevice {
         for block in blocks.iter() {
             self.file.borrow_mut().write_all(&block.contents)?;
             if self.print_blocks {
-                println!("Wrote: {:?}", &block);
+                defmt_or_log::info!("Wrote: {:?}", &block);
             }
         }
         Ok(())

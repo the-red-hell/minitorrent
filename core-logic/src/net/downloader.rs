@@ -3,7 +3,7 @@ use embedded_nal_async::Dns;
 use crate::{
     BitTorrenter, BitTorrenterError, TcpConnector,
     bittorrenter::states::Downloading,
-    fs::VolumeMgr,
+    fs::{FileSystemExt, VolumeMgr},
     net::buffer::SocketBuffers,
     peer::{NotHandshaken, Peer},
 };
@@ -33,6 +33,13 @@ where
             .await
             .map_err(BitTorrenterError::HandshakeFailed)?;
 
+        let name = self.state.get_name();
+
+        self.fs.go_to_root_dir();
+        self.fs
+            .open_file(name, embedded_sdmmc::Mode::ReadWriteCreateOrAppend)
+            .map_err(BitTorrenterError::FsError)?;
+
         handshake_peer
             .process_incoming_data(&mut self.fs)
             .await
@@ -43,15 +50,10 @@ where
         //     .await
         //     .map_err(BitTorrenterError::TcpError)?;
 
-        // let name = self.state.get_name();
-
         // defmt_or_log::info!(
         //     "Peer unchoked, starting file download for file {:?}...",
         //     name
         // );
-        // self.fs
-        //     .open_file(name, embedded_sdmmc::Mode::ReadWriteCreateOrAppend)
-        //     .map_err(BitTorrenterError::FsError)?;
 
         // let piece_length = self.state.get_piece_length();
         // let total_length = self.state.get_total_length();
