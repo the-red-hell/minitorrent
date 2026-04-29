@@ -31,6 +31,7 @@ async fn test_write_file() {
         .write_to_opened_file(test_text.as_bytes())
         .await
         .unwrap();
+    fs_duple.flush().unwrap();
 
     let mut buf = vec![0u8; test_text.len()];
     fs_duple
