@@ -15,7 +15,7 @@ impl<'a> EspTcpSocket<'a> {
     }
 }
 
-impl<'a> embedded_io::ErrorType for EspTcpSocket<'a> {
+impl<'a> embedded_io_async::ErrorType for EspTcpSocket<'a> {
     type Error = TcpError;
 }
 

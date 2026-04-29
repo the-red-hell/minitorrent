@@ -41,6 +41,14 @@ where
         self.open_file
     }
 
+    pub fn flush(&mut self) -> Result<(), <FileSystem<V> as FileSystemExt>::Error> {
+        if let Some(file) = self.open_file {
+            self.get_volume_mgr().flush_file(file)
+        } else {
+            Ok(())
+        }
+    }
+
     fn close_open_file(&mut self) {
         if let Some(file) = self.open_file {
             self.get_volume_mgr()

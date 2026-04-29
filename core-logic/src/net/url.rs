@@ -1,7 +1,8 @@
 //! A simple URL parser for embedded systems without atomic operations (`url` uses `fetch_add`)
 use heapless::String;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+#[defmt_or_log::derive_format_or_debug]
 pub struct SimpleUrl<'a> {
     scheme: &'a str,
     host: &'a str,

@@ -24,23 +24,12 @@
 /// // 8KB receive, 2KB transmit - larger buffers for faster transfers
 /// let buffers: SocketBuffers<8192, 2048> = SocketBuffers::new();
 /// ```
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub(crate) struct SocketBuffers<const RX: usize, const TX: usize> {
     /// Buffer for incoming TCP data (receive window).
     pub(crate) rx: [u8; RX],
     /// Buffer for outgoing TCP data (send window).
     pub(crate) tx: [u8; TX],
-}
-
-impl<const RX: usize, const TX: usize> defmt::Format for SocketBuffers<RX, TX> {
-    fn format(&self, f: defmt::Formatter) {
-        defmt::write!(
-            f,
-            "SocketBuffers {{ rx: [{} bytes], tx: [{} bytes] }}",
-            self.rx.len(),
-            self.tx.len()
-        );
-    }
 }
 
 impl<const RX: usize, const TX: usize> SocketBuffers<RX, TX> {

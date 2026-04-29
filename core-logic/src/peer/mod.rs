@@ -1,14 +1,19 @@
 use ::core::marker::PhantomData;
 
-use crate::{TcpConnector, core::PeerId};
-mod handshake;
+use crate::{TcpConnector, core::PeerId, peer::piece_state::PieceState};
+pub(super) mod buf_reader;
+pub mod handshake;
+pub(crate) mod messages;
+mod piece_state;
+pub mod process;
 
+pub const BLOCK_SIZE: u32 = 16 * 1024; // 16KB
 const PEER_ID: PeerId = *b"AwesomeESP32C3Client";
 
 /// A Peer in the BitTorrent protocol, parameterized by its handshake, choke, and interest states.
 ///
 /// Flow:
-///     NotHandshaken -> Handshaken (via peer.perform_handshake())
+///     NotHandshaken -> Handshaken (via peer.into_handshake_performed())
 ///     Choked <-> Unchoked
 ///     Interested <-> NotInterested
 ///     
@@ -17,52 +22,46 @@ const PEER_ID: PeerId = *b"AwesomeESP32C3Client";
 /// let peer = Peer::new(tcp_connection); // NotHandshaken, Choked, NotInterested
 /// // Perform handshake
 /// let peer = peer.into_handshake_performed(info_hash).await?; // Handshaken, Choked, NotInterested
-/// // ... later ...
-/// let peer = peer.unchoke();```
-pub(crate) struct Peer<
-    'a,
-    NET,
-    HandsShaken = NotHandshaken,
-    CHOKED = Choked,
-    INTERESTED = NotInterested,
-> where
-    NET: TcpConnector + 'a,
-{
-    connection: NET::Connection<'a>,
-    _handshake_state: PhantomData<HandsShaken>,
-    _choke_state: PhantomData<CHOKED>,
-    _interest_state: PhantomData<INTERESTED>,
-}
-
-impl<'a, NET, HandsShaken, CHOKED, INTERESTED> Peer<'a, NET, HandsShaken, CHOKED, INTERESTED>
+pub(crate) struct Peer<'a, NET, HandshakeState = NotHandshaken>
 where
     NET: TcpConnector + 'a,
 {
-    pub(crate) fn new(connection: NET::Connection<'a>) -> Self {
+    state: State,
+    piece: PieceState,
+    connection: NET::Connection<'a>,
+    _handshake_state: PhantomData<HandshakeState>,
+}
+
+impl<'a, NET, HandshakeState> Peer<'a, NET, HandshakeState>
+where
+    NET: TcpConnector + 'a,
+{
+    pub(crate) fn new(connection: NET::Connection<'a>, piece_length: u32, file_size: u32) -> Self {
         Self {
             connection,
             _handshake_state: PhantomData,
-            _choke_state: PhantomData,
-            _interest_state: PhantomData,
+            state: State::default(),
+            piece: PieceState::new(0, piece_length, file_size),
         }
     }
 
+    // TODO: inline such methods & make them const if possible
     pub(crate) fn connection(&mut self) -> &mut NET::Connection<'a> {
         &mut self.connection
     }
 }
 
-#[derive(Debug)]
-pub(super) struct Choked;
-#[derive(Debug)]
-pub(super) struct Unchoked;
+#[defmt_or_log::derive_format_or_debug]
+#[derive(Clone, Copy, Default)]
+pub(super) enum State {
+    #[default]
+    NotHandshaken,
+    ChokedNotInterested,
+    ChokedInterested,
+    UnchokedInterested,
+}
 
-#[derive(Debug)]
-pub(super) struct Interested;
-#[derive(Debug)]
-pub(super) struct NotInterested;
-
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub(super) struct Handshaken;
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub(super) struct NotHandshaken;

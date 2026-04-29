@@ -6,7 +6,8 @@ use alloc::string::String;
 use core::fmt::Write;
 use heapless::Vec;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+#[defmt_or_log::derive_format_or_debug]
 pub struct TrackerRequest<'a> {
     /// the info hash of the torrent
     pub info_hash: &'a InfoHash,
@@ -52,21 +53,10 @@ impl<'a> TrackerRequest<'a> {
     }
 }
 
-#[derive(Debug)]
+#[defmt_or_log::derive_format_or_debug]
 pub struct TrackerResponse {
     pub interval: u32,
     pub peers: Vec<core::net::SocketAddrV4, 10>,
-}
-
-impl defmt::Format for TrackerResponse {
-    fn format(&self, fmt: defmt::Formatter) {
-        defmt::write!(
-            fmt,
-            "TrackerResponse {{ interval: {}, peers: {:?} }}",
-            self.interval,
-            defmt::Debug2Format(&self.peers)
-        );
-    }
 }
 
 mod tracker_response_parser {
@@ -92,7 +82,7 @@ mod tracker_response_parser {
                         interval = p.parse_int()? as u32;
                     }
                     "peers" => {
-                        let peer_bytes = p.parse_raw_value()?;
+                        let peer_bytes = p.parse_bytes()?;
                         // Compact peer list parsing
                         let peer_chunks = peer_bytes.as_chunks::<6>();
 
@@ -136,5 +126,25 @@ mod tests {
         assert!(url_encoded.contains("downloaded=0"));
         assert!(url_encoded.contains("left=1000"));
         assert!(url_encoded.contains("compact=1"));
+    }
+
+    #[test]
+    fn test_tracker_response_parsing() {
+        // This is a bencoded dictionary with an interval of 1800 and two peers
+        let bencoded_response =
+            b"d8:intervali1800e5:peers12:\x7F\x00\x00\x01\x1A\xE1\x7F\x00\x00\x02\x1A\xE2e";
+        let response = TrackerResponse::parse(bencoded_response).unwrap();
+        assert_eq!(response.interval, 1800);
+        assert_eq!(response.peers.len(), 2);
+        assert_eq!(
+            response.peers[0].ip(),
+            &core::net::Ipv4Addr::new(127, 0, 0, 1)
+        );
+        assert_eq!(response.peers[0].port(), 6881);
+        assert_eq!(
+            response.peers[1].ip(),
+            &core::net::Ipv4Addr::new(127, 0, 0, 2)
+        );
+        assert_eq!(response.peers[1].port(), 6882);
     }
 }

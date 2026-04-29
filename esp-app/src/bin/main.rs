@@ -26,7 +26,7 @@ async fn main(spawner: Spawner) -> ! {
     let file = file.as_slice();
     info!("WE GOT THE FILE WITH: {:?}", file);
 
-    let torrent = core_logic::core::metainfo::MetaInfoFile::parse(file).unwrap();
+    let torrent = defmt::unwrap!(core_logic::core::metainfo::MetaInfoFile::parse(file));
 
     info!("WE GOT THE TORRENT WITH: {:?}", torrent);
 

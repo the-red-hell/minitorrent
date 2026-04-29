@@ -3,13 +3,13 @@
 use embedded_nal_async::Dns;
 use embedded_sdmmc::BlockDevice;
 
-use crate::{TcpConnector, fs::VolumeMgr};
+use crate::{TcpConnector, fs::VolumeMgr, peer::handshake::HandshakeError};
 
 /// Errors that can occur during BitTorrent operations.
 ///
 /// This enum wraps errors from the network stack (DNS/TCP) and file system,
 /// allowing callers to handle them uniformly.
-#[derive(Debug, defmt::Format)]
+#[defmt_or_log::derive_format_or_debug]
 pub enum BitTorrenterError<NET, V>
 where
     NET: TcpConnector + Dns,
@@ -20,9 +20,9 @@ where
     /// TCP connection or I/O failed.
     TcpError(<NET as TcpConnector>::Error),
     /// File system operation failed.
-    FsError(<<V as VolumeMgr>::BlockDevice as BlockDevice>::Error),
+    FsError(embedded_sdmmc::Error<<<V as VolumeMgr>::BlockDevice as BlockDevice>::Error>),
     /// Failed to parse the tracker's response (e.g., invalid bencoding).
-    TrackerResponseParseError,
+    TrackerResponseParseError(bencode::Error),
     /// Failed to perform the BitTorrent handshake with a peer.
-    HandshakeFailed,
+    HandshakeFailed(HandshakeError<NET>),
 }
