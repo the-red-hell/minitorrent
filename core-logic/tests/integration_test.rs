@@ -6,6 +6,7 @@ mod fs_helper;
 mod wifi_helper;
 
 #[tokio::test]
+#[ignore = "Won't work on GitHub actions. Run with `cargo test -- --ignored` to execute."]
 async fn integration_test() {
     env_logger::init();
     let mut bittorrenter = init_bittorrenter();
