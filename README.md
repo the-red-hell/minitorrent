@@ -56,4 +56,5 @@ ESP32C3-Supermini          SD Card Module
 - [x] parse the file
 - [x] request the tracker via the provided `announce`-key
 - [x] receive the response & parse it into a `TrackerResponse`
-- [ ] the rest...
+- [x] download the stuff if everything works correctly
+- [ ] the rest (handle errors, seed)...
