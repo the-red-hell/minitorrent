@@ -12,7 +12,7 @@ pub struct Downloading {
     piece_length: u32,
     total_length: u32,
     name: ShortFileName,
-    piece_hashes: alloc::vec::Vec<InfoHash>,
+    _piece_hashes: alloc::vec::Vec<InfoHash>,
 }
 
 impl Downloading {
@@ -28,7 +28,7 @@ impl Downloading {
             piece_length: metainfo.info.piece_length,
             total_length: metainfo.info.length,
             name,
-            piece_hashes: metainfo.info.pieces.to_vec(),
+            _piece_hashes: metainfo.info.pieces.to_vec(),
         }
     }
     pub fn get_info_hash(&self) -> &InfoHash {
@@ -50,8 +50,8 @@ impl Downloading {
         &self.peers
     }
 
-    pub(crate) fn get_pieces_hashes(&self) -> &[InfoHash] {
-        &self.piece_hashes
+    pub(crate) fn _get_pieces_hashes(&self) -> &[InfoHash] {
+        &self._piece_hashes
     }
 }
 

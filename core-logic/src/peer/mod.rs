@@ -3,7 +3,7 @@ use ::core::marker::PhantomData;
 use crate::{TcpConnector, core::PeerId, peer::piece_state::PieceState};
 pub(super) mod buf_reader;
 pub mod handshake;
-mod messages;
+pub(crate) mod messages;
 mod piece_state;
 pub mod process;
 
