@@ -1,6 +1,6 @@
 //! Peer message definitions and related traits.
 
-pub mod error;
+pub(crate) mod error;
 use heapless::Vec;
 
 use crate::peer::{buf_reader::BufReader, messages::error::MessageError};
@@ -25,8 +25,8 @@ pub enum PeerMessage<'a> {
     Unchoke,
     Interested,
     NotInterested,
-    Have(u32),               // piece index
-    BitField(Vec<bool, 64>), // bitfield data
+    Have(u32),                // piece index
+    _BitField(Vec<bool, 64>), // bitfield data
     Request {
         index: u32,
         begin: u32,
@@ -52,7 +52,7 @@ impl<'a> PeerMessage<'a> {
             PeerMessage::Interested => Some(PeerMessageTypes::Interested as u8),
             PeerMessage::NotInterested => Some(PeerMessageTypes::NotInterested as u8),
             PeerMessage::Have(_) => Some(PeerMessageTypes::Have as u8),
-            PeerMessage::BitField(_) => Some(PeerMessageTypes::Bitfield as u8),
+            PeerMessage::_BitField(_) => Some(PeerMessageTypes::Bitfield as u8),
             PeerMessage::Request { .. } => Some(PeerMessageTypes::Request as u8),
             PeerMessage::Piece { .. } => Some(PeerMessageTypes::Piece as u8),
             PeerMessage::Cancel { .. } => Some(PeerMessageTypes::Cancel as u8),
@@ -74,7 +74,7 @@ impl<'a> PeerMessage<'a> {
             | PeerMessage::Interested
             | PeerMessage::NotInterested => 1,
             PeerMessage::Have(_) => 5,
-            PeerMessage::BitField(_bitfield) => unimplemented!(),
+            PeerMessage::_BitField(_bitfield) => unimplemented!(),
             PeerMessage::Request { .. } | PeerMessage::Cancel { .. } => 13,
             PeerMessage::Piece { .. } => unimplemented!("Piece messages are not supported yet"), // + 7
         };
@@ -99,7 +99,7 @@ impl<'a> PeerMessage<'a> {
             PeerMessage::Have(piece_index) => {
                 bytes.extend_from_slice(&piece_index.to_be_bytes()).unwrap();
             }
-            PeerMessage::BitField(_bitfield) => {
+            PeerMessage::_BitField(_bitfield) => {
                 todo!("Bitfield message serialization not implemented yet");
             }
             PeerMessage::Request {
