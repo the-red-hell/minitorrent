@@ -26,10 +26,7 @@ where
         loop {
             // read data from the peer connection into the buffer
             let bytes_read = match self.connection().read(buf.remaining_mut()).await {
-                Ok(0) => {
-                    defmt_or_log::info!("EOF");
-                    0
-                }
+                Ok(0) => 0,
                 Ok(len) => len,
                 Err(e) => {
                     defmt_or_log::error!("Failed to read from peer: {:?}", e);
@@ -184,7 +181,7 @@ where
         // TODO: update SHA1
 
         // check whether complete
-        if self.piece.is_complete() {
+        if self.piece.should_write() {
             defmt_or_log::info!(
                 "Received complete piece {}, writing to file system...",
                 self.piece.index()
