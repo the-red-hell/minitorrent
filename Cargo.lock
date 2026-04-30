@@ -501,6 +501,7 @@ dependencies = [
  "mbrman",
  "reqwest",
  "sha1_smol",
+ "static_cell",
  "tokio",
 ]
 

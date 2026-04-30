@@ -88,6 +88,7 @@ where
                 self.connection()
                     .write_all(&msg.as_bittorrent_bytes())
                     .await?;
+                self.connection().flush().await?;
                 self.state = State::ChokedInterested;
             }
             (State::ChokedInterested, Some(PeerMessage::Unchoke)) => {

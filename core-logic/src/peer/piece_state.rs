@@ -1,5 +1,4 @@
-use alloc::boxed::Box;
-use alloc::vec;
+use static_cell::StaticCell;
 
 use crate::BLOCK_SIZE;
 
@@ -8,14 +7,14 @@ use crate::BLOCK_SIZE;
 pub(super) const MAX_BLOCKS: u32 = 1;
 
 /// Represents the state of a piece being downloaded from a peer.
-/// The block data is heap-allocated once and reused across pieces.
+/// The block data lives in a static buffer to avoid heap fragmentation.
 pub(super) struct PieceState {
     /// current piece index (0-based)
     index: u32,
     /// bitfield tracking which blocks have been received
     have: u32,
-    /// flat buffer holding block data, allocated once (sized for the largest piece or `MAX_BLOCKS`, whichever is smaller)
-    piece: Box<[u8]>,
+    /// reference to a static buffer holding one block's worth of data
+    piece: &'static mut [u8; BLOCK_SIZE as usize],
     /// number of bytes received so far for this piece
     len_bytes: u32,
     /// actual number of blocks for this piece (recomputed on increment)
@@ -30,13 +29,13 @@ pub(super) struct PieceState {
 
 impl PieceState {
     pub fn new(index: u32, piece_length: u32, file_size: u32) -> Self {
+        static PIECE_BUF: StaticCell<[u8; BLOCK_SIZE as usize]> = StaticCell::new();
         let piece_size = piece_size_for(index, piece_length, file_size);
         let num_blocks = piece_size.div_ceil(BLOCK_SIZE);
         Self {
             index,
             have: 0,
-            // since this is called only once for the first time, `num_blocks` corresponds to the largest number of blocks
-            piece: vec![0u8; (num_blocks.min(MAX_BLOCKS) * BLOCK_SIZE) as usize].into_boxed_slice(),
+            piece: PIECE_BUF.init([0u8; BLOCK_SIZE as usize]),
             len_bytes: 0,
             num_blocks,
             piece_size,
@@ -47,13 +46,13 @@ impl PieceState {
 
     #[inline]
     pub fn get_piece_data(&self) -> &[u8] {
-        &self.piece[..self.len_bytes as usize]
+        &self.piece.as_slice()[..self.len_bytes as usize]
     }
 
     /// returns if all blocks for this piece have been received or the buffer for this piece is full
     #[inline]
     pub const fn should_write(&self) -> bool {
-        self.have.count_ones() == self.num_blocks || self.len_bytes == self.piece.len() as u32
+        self.have.count_ones() == self.num_blocks || self.len_bytes == BLOCK_SIZE
     }
 
     #[inline]
