@@ -27,6 +27,7 @@ where
             self.state.get_total_length(),
         )
         .await?;
+        defmt_or_log::info!("Connected to peer, performing handshake...");
 
         let mut handshake_peer = peer
             .into_handshake_performed(self.state.get_info_hash())
