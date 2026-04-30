@@ -144,6 +144,7 @@ where
         self.connection()
             .write_all(&req_msg.as_bittorrent_bytes())
             .await?;
+        self.connection().flush().await?;
 
         defmt_or_log::info!(
             "Requested block at begin: {} from piece {} from peer",
