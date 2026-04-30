@@ -4,7 +4,7 @@ use crate::BLOCK_SIZE;
 
 /// Maximum number of blocks to buffer in memory per piece before writing to disk.
 // TODO: if it's more than that, the current implementation of `PieceState` won't work
-pub(super) const NUM_BLOCKS: u32 = 1;
+pub(super) const NUM_BLOCKS: u32 = 2;
 
 /// Represents the state of a piece being downloaded from a peer.
 /// The block data lives in a static buffer to avoid heap fragmentation.
@@ -62,9 +62,8 @@ impl PieceState {
 
     #[inline]
     pub fn add_block(&mut self, begin: u32, block_data: &[u8]) {
-        // compute where to write the block data in the piece buffer, based on how many blocks we've already received
-        let self_begin = begin as usize - self.have.count_ones() as usize * BLOCK_SIZE as usize;
-        self.piece[self_begin..self_begin + block_data.len()].copy_from_slice(block_data);
+        self.piece[self.len_bytes as usize..self.len_bytes as usize + block_data.len()]
+            .copy_from_slice(block_data);
         // here we need the real begin offset to set the bitfield
         self.have |= 1u32 << (begin as usize / BLOCK_SIZE as usize);
         self.len_bytes += block_data.len() as u32;
