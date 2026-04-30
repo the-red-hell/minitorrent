@@ -39,7 +39,10 @@ where
 
             // try to parse a message from the buffer
             let (msg, is_finished) = match PeerMessage::from_bytes(&mut buf) {
-                Ok(Some(msg)) => (Some(msg), true),
+                Ok(Some(msg)) => {
+                    defmt_or_log::info!("Received message from peer: {:?}", msg.get_type());
+                    (Some(msg), true)
+                }
                 Ok(None) => {
                     defmt_or_log::trace!("Waiting for more data...");
                     (None, false)
@@ -52,10 +55,6 @@ where
                     (None, true)
                 }
             };
-            defmt_or_log::info!(
-                "Received message from peer: {:?}",
-                msg.as_ref().map(|m| m.get_type())
-            );
 
             // process the message
             if self.process_msg(msg, fs).await? {
@@ -114,12 +113,7 @@ where
             (State::UnchokedInterested, Some(PeerMessage::Choke)) => {
                 self.state = State::ChokedInterested;
             }
-            _ => {
-                defmt_or_log::warn!(
-                    "Received unexpected message while in state {:?}. Ignoring message.",
-                    self.state
-                );
-            }
+            _ => {}
         }
 
         Ok(false)
