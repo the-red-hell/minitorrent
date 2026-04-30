@@ -33,8 +33,13 @@ async fn main(spawner: Spawner) -> ! {
     let mut rx_buf = [0u8; 1024];
     let res = bittorrenter.into_downloader(&torrent, &mut rx_buf).await;
     match res {
-        Ok(downloader) => {
+        Ok(mut downloader) => {
             info!("WE GOT A TRACKER RESPONSE: {:?}", downloader.get_peers());
+
+            match downloader.download().await {
+                Ok(_) => info!("DOWNLOAD COMPLETED SUCCESSFULLY"),
+                Err(e) => info!("DOWNLOAD FAILED WITH ERROR: {:?}", e),
+            }
         }
         Err(e) => {
             info!("WE GOT AN ERROR FROM THE TRACKER {}", e);

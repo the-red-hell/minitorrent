@@ -2,7 +2,6 @@ use defmt::{debug, info};
 use embassy_net::StackResources;
 use embassy_time::Duration;
 use esp_hal::{peripherals, rng::Rng};
-use esp_radio::Controller;
 
 use crate::wifi::{
     EspWifi,
@@ -34,15 +33,8 @@ impl EspWifi {
         spawner: embassy_executor::Spawner,
         wifi_peripheral: peripherals::WIFI<'static>,
     ) -> Self {
-        static ESP_RADIO_CTRL_CELL: static_cell::StaticCell<Controller<'static>> =
-            static_cell::StaticCell::new();
-        let esp_radio_ctrl = &*ESP_RADIO_CTRL_CELL
-            .uninit()
-            .write(esp_radio::init().expect("Failed to initialize radio controller"));
-
-        let (wifi_controller, interfaces) =
-            esp_radio::wifi::new(esp_radio_ctrl, wifi_peripheral, Default::default())
-                .expect("Failed to initialize Wi-Fi controller");
+        let (controller, interfaces) =
+            esp_radio::wifi::new(wifi_peripheral, Default::default()).unwrap();
 
         let config = embassy_net::Config::dhcpv4(Default::default());
 
@@ -50,16 +42,16 @@ impl EspWifi {
         let seed = (rng.random() as u64) << 32 | rng.random() as u64;
 
         // Init network stack
-        static STACK_RESOURCES_CELL: static_cell::StaticCell<StackResources<2>> =
+        static STACK_RESOURCES_CELL: static_cell::StaticCell<StackResources<3>> =
             static_cell::StaticCell::new();
         let (stack, runner) = embassy_net::new(
-            interfaces.sta,
+            interfaces.station,
             config,
-            STACK_RESOURCES_CELL.init(StackResources::<2>::new()),
+            STACK_RESOURCES_CELL.init(StackResources::<3>::new()),
             seed,
         );
-        spawner.spawn(wifi_connection_task(wifi_controller)).ok();
-        spawner.spawn(net_task(runner)).ok();
+        spawner.spawn(wifi_connection_task(controller).expect("// TODO"));
+        spawner.spawn(net_task(runner).expect("// TODO"));
 
         Self::new(stack)
     }
