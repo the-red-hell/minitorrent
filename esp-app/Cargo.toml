@@ -30,7 +30,7 @@ embassy-net = { version = "0.9.1", features = [
   "udp",
   "dns",
 ] }
-esp-alloc = { version = "0.9.0", features = ["defmt"] }
+esp-alloc = { version = "0.10.0", features = ["defmt"] }
 panic-rtt-target = { version = "0.2.0", features = ["defmt"] }
 rtt-target = { version = "0.6.2", features = ["defmt"] }
 # for more networking protocol support see https://crates.io/crates/edge-net
