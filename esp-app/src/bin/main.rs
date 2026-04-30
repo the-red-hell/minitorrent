@@ -8,6 +8,7 @@
 
 use defmt::info;
 use embassy_executor::Spawner;
+use embedded_sdmmc::VolumeManager;
 use panic_rtt_target as _;
 
 extern crate alloc;
@@ -40,6 +41,12 @@ async fn main(spawner: Spawner) -> ! {
                 Ok(_) => info!("DOWNLOAD COMPLETED SUCCESSFULLY"),
                 Err(e) => info!("DOWNLOAD FAILED WITH ERROR: {:?}", e),
             }
+
+            VolumeManager::close_file(
+                downloader.fs.get_volume_mgr(),
+                downloader.fs.get_open_file().unwrap(),
+            )
+            .unwrap();
         }
         Err(e) => {
             info!("WE GOT AN ERROR FROM THE TRACKER {}", e);
