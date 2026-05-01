@@ -3,7 +3,6 @@ use static_cell::StaticCell;
 use crate::BLOCK_SIZE;
 
 /// Maximum number of blocks to buffer in memory per piece before writing to disk.
-// TODO: if it's more than that, the current implementation of `PieceState` won't work
 pub(super) const NUM_BLOCKS: u32 = 2;
 
 /// Represents the state of a piece being downloaded from a peer.
@@ -142,12 +141,12 @@ mod tests {
 
     #[test]
     fn test_piece_state() {
-        let piece_size: u32 = 32 * 1024;
-        let file_size: u32 = 65 * 1024; // 3 pieces: 32KB, 32KB, 1KB
+        let piece_size: u32 = NUM_BLOCKS * BLOCK_SIZE; // 32KB
+        let file_size: u32 = piece_size * 2 + 1024; // 2 pieces: 64KB, 1KB
 
         let mut piece_state = PieceState::new(0, piece_size, file_size);
         assert_eq!(piece_state.piece_size, piece_size);
-        assert_eq!(piece_state.num_blocks, 2);
+        assert_eq!(piece_state.num_blocks, NUM_BLOCKS);
         assert!(!piece_state.should_write());
         assert_eq!(
             piece_state.get_next_block_request(),
@@ -158,7 +157,7 @@ mod tests {
         // PIECE 0
         assert_eq!(piece_state.index(), 0);
         // block 0
-        piece_state.add_block(0, &[0u8; BLOCK_SIZE as usize]);
+        piece_state.add_block(0, &[0u8; (NUM_BLOCKS * BLOCK_SIZE) as usize]);
         // buffer is full
         assert!(piece_state.should_write());
         assert!(piece_state.increment());
@@ -178,7 +177,7 @@ mod tests {
             Some((1, 0, BLOCK_SIZE))
         );
         // block 0
-        piece_state.add_block(0, &[0u8; BLOCK_SIZE as usize]);
+        piece_state.add_block(0, &[0u8; (NUM_BLOCKS * BLOCK_SIZE) as usize]);
         // buffer is full
         assert!(piece_state.should_write());
         assert!(piece_state.increment());
