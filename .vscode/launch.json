@@ -1,0 +1,71 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug unit tests in library 'bencode'",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["test", "--package=bencode"]
+      }
+    },
+    {
+      "name": "Debug unit tests in library 'core_logic'",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["test", "--package=core-logic"]
+      }
+    },
+    {
+      "name": "Debug integration test 'fs'",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["test", "--test=fs", "--package=core-logic"]
+      }
+    },
+    {
+      "name": "Debug integration test 'integration_test'",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": [
+          "test",
+          "--test=integration_test",
+          "--package=core-logic",
+          "--features",
+          "defmt"
+        ]
+      }
+    },
+    {
+      "name": "Debug unit tests in library 'esp_app'",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["test", "--package=esp-app"]
+      }
+    },
+    {
+      "name": "Debug executable 'esp-app'",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["run", "--bin=esp-app", "--package=esp-app"]
+      },
+      "args": []
+    },
+    {
+      "name": "Debug unit tests in executable 'esp-app'",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["test", "--bin=esp-app", "--package=esp-app"]
+      }
+    }
+  ]
+}
