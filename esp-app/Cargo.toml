@@ -9,9 +9,9 @@ name = "esp-app"
 path = "./src/bin/main.rs"
 
 [dependencies]
-esp-hal = { version = "1.0.0", features = ["defmt", "esp32c3", "unstable"] }
+esp-hal = { version = "1.1.0", features = ["defmt", "esp32c3", "unstable"] }
 
-esp-rtos = { version = "0.2.0", features = [
+esp-rtos = { version = "0.3.0", features = [
   "defmt",
   "embassy",
   "esp-alloc",
@@ -20,9 +20,9 @@ esp-rtos = { version = "0.2.0", features = [
 ] }
 
 defmt = "1.0.1"
-esp-bootloader-esp-idf = { version = "0.4.0", features = ["defmt", "esp32c3"] }
+esp-bootloader-esp-idf = { version = "0.5.0", features = ["defmt", "esp32c3"] }
 
-embassy-net = { version = "0.9.0", features = [
+embassy-net = { version = "0.9.1", features = [
   "defmt",
   "dhcpv4",
   "medium-ethernet",
@@ -30,17 +30,16 @@ embassy-net = { version = "0.9.0", features = [
   "udp",
   "dns",
 ] }
-esp-alloc = { version = "0.9.0", features = ["defmt"] }
+esp-alloc = { version = "0.10.0", features = ["defmt"] }
 panic-rtt-target = { version = "0.2.0", features = ["defmt"] }
 rtt-target = { version = "0.6.2", features = ["defmt"] }
 # for more networking protocol support see https://crates.io/crates/edge-net
-embassy-executor = { version = "0.9.1", features = ["defmt"] }
+embassy-executor = { version = "0.10.0", features = ["defmt"] }
 embassy-time = { version = "0.5.1", features = ["defmt"] }
-esp-radio = { version = "0.17.0", features = [
+esp-radio = { version = "0.18.0", features = [
   "defmt",
   "esp-alloc",
   "esp32c3",
-  "smoltcp",
   "unstable",
   "wifi",
 ] }
