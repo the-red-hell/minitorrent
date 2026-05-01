@@ -1,0 +1,12 @@
+{
+  "cSpell.words": ["bencode", "bitfield", "defmt", "unchoke"],
+  "rust-analyzer.linkedProjects": [
+    "esp-app/Cargo.toml",
+    "core-logic/Cargo.toml",
+    "bencode/Cargo.toml"
+  ],
+  "rust-analyzer.cargo.features": ["log"],
+  "rust-analyzer.runnables.extraEnv": {
+    "RUST_LOG": "debug"
+  }
+}
