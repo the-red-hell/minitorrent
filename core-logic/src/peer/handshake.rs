@@ -24,6 +24,12 @@ where
             .write_all(handshake_msg.as_slice())
             .await
             .map_err(HandshakeError::WriteFailed)?;
+        self.connection()
+            .flush()
+            .await
+            .map_err(HandshakeError::WriteFailed)?;
+
+        defmt_or_log::info!("wrote handshake message to peer, waiting for response...");
 
         let mut response_buf = [0u8; 68];
         self.connection()

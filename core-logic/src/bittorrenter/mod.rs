@@ -54,7 +54,7 @@ pub struct BitTorrenter<
     /// Network implementation for DNS and TCP.
     pub(crate) net: NET,
     /// File system for torrent data.
-    pub(crate) fs: FileSystem<V>,
+    pub fs: FileSystem<V>,
     /// Pre-allocated socket buffers owned by this client.
     /// Only one TCP connection can be active at a time.
     pub(crate) socket_buffers: SocketBuffers<RX, TX>,
