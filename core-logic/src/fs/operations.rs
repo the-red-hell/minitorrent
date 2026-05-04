@@ -18,35 +18,40 @@ where
         }
     }
 
+    #[inline]
     pub fn get_volume_mgr(&self) -> &V {
         &self.volume_mgr
     }
 
-    pub fn get_current_dir(&self) -> RawDirectory {
+    #[inline]
+    pub const fn get_current_dir(&self) -> RawDirectory {
         self.opened_dir
     }
 
+    #[inline]
     pub fn go_to_root_dir(&mut self) {
         self.close_current_dir();
         self.opened_dir = self.volume_mgr.get_root_dir(self.vol0);
     }
 
-    fn close_current_dir(&mut self) {
-        self.get_volume_mgr()
-            .close_dir(self.get_current_dir())
-            .expect("Should not fail to close dir");
-    }
-
+    #[inline]
     pub fn get_open_file(&self) -> Option<RawFile> {
         self.open_file
     }
 
+    #[inline]
     pub fn flush(&mut self) -> Result<(), <FileSystem<V> as FileSystemExt>::Error> {
         if let Some(file) = self.open_file {
             self.get_volume_mgr().flush_file(file)
         } else {
             Ok(())
         }
+    }
+
+    fn close_current_dir(&mut self) {
+        self.get_volume_mgr()
+            .close_dir(self.get_current_dir())
+            .expect("Should not fail to close dir");
     }
 
     fn close_open_file(&mut self) {

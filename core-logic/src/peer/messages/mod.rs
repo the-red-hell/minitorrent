@@ -45,7 +45,7 @@ pub enum PeerMessage<'a> {
 }
 
 impl<'a> PeerMessage<'a> {
-    pub(crate) fn get_type(&self) -> Option<u8> {
+    pub(crate) const fn get_type(&self) -> Option<u8> {
         match self {
             PeerMessage::Choke => Some(PeerMessageTypes::Choke as u8),
             PeerMessage::Unchoke => Some(PeerMessageTypes::Unchoke as u8),
@@ -164,7 +164,7 @@ impl<'a> PeerMessage<'a> {
     }
 }
 
-fn parse_have_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
+const fn parse_have_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
     if data.len() < 5 {
         return Err(MessageError::InvalidLength);
     }
@@ -172,7 +172,9 @@ fn parse_have_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, Mes
     Ok(Some(PeerMessage::Have(piece_index)))
 }
 
-fn parse_bitfield_message<'a>(_data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
+const fn parse_bitfield_message<'a>(
+    _data: &'a [u8],
+) -> Result<Option<PeerMessage<'a>>, MessageError> {
     // TODO: todo!("Bitfield message parsing not implemented yet");
     Err(MessageError::UnknownMessageType(
         PeerMessageTypes::Bitfield as u8,
@@ -230,6 +232,7 @@ fn parse_cancel_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, M
 impl<'a> TryInto<u8> for PeerMessage<'a> {
     type Error = ();
 
+    #[inline]
     fn try_into(self) -> Result<u8, Self::Error> {
         self.get_type().ok_or(())
     }

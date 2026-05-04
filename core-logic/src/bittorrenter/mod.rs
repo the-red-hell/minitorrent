@@ -71,7 +71,8 @@ where
     V: VolumeMgr,
 {
     /// Get mutable access to the file system.
-    pub fn fs(&mut self) -> &mut FileSystem<V> {
+    #[inline]
+    pub const fn fs(&mut self) -> &mut FileSystem<V> {
         &mut self.fs
     }
 }
@@ -92,7 +93,8 @@ where
     ///
     /// Socket buffers are allocated internally based on the const generic
     /// parameters `RX` and `TX`. Default sizes are 4KB receive, 1KB transmit.
-    pub fn new(net: NET, fs: FileSystem<V>) -> Self {
+    #[inline]
+    pub const fn new(net: NET, fs: FileSystem<V>) -> Self {
         Self {
             net,
             fs,
