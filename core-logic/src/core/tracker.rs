@@ -43,8 +43,8 @@ impl<'a> TrackerRequest<'a> {
     pub(crate) fn to_url_encoded(&self) -> String {
         let mut url_encoded = String::with_capacity(256);
 
-        write!(url_encoded, "info_hash={}", &percent_encode(self.info_hash)).unwrap();
-        write!(url_encoded, "&peer_id={}", &percent_encode(self.peer_id)).unwrap();
+        write!(url_encoded, "info_hash={}", percent_encode(self.info_hash)).unwrap();
+        write!(url_encoded, "&peer_id={}", percent_encode(self.peer_id)).unwrap();
         write!(url_encoded, "&port={}", self.port).unwrap();
         write!(url_encoded, "&uploaded={}", self.uploaded).unwrap();
         write!(url_encoded, "&downloaded={}", self.downloaded).unwrap();
