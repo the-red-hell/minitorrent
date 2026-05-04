@@ -62,11 +62,13 @@ impl<'a> SimpleUrl<'a> {
     }
 
     /// Get the host string
-    pub fn host_str(&self) -> Option<&str> {
+    #[inline]
+    pub const fn host_str(&self) -> Option<&str> {
         Some(self.host)
     }
 
     /// Get the port, or default based on scheme
+    #[inline]
     pub fn port(&self) -> Option<u16> {
         self.port.or(match self.scheme {
             "http" => Some(80),
@@ -76,16 +78,19 @@ impl<'a> SimpleUrl<'a> {
     }
 
     /// Get the path
-    pub fn path(&self) -> &str {
+    #[inline]
+    pub const fn path(&self) -> &str {
         self.path
     }
 
     /// Get the query string
+    #[inline]
     pub fn query(&self) -> Option<&str> {
         self.query.as_ref().map(|s| s.as_str())
     }
 
     /// Set the query string
+    #[inline]
     pub fn set_query(&mut self, query: Option<&str>) {
         self.query = query.map(|q| {
             let mut s = String::<512>::new();

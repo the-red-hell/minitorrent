@@ -27,7 +27,7 @@ pub(super) struct PieceState {
 }
 
 impl PieceState {
-    pub fn new(index: u32, piece_length: u32, file_size: u32) -> Self {
+    pub(super) fn new(index: u32, piece_length: u32, file_size: u32) -> Self {
         static PIECE_BUF: StaticCell<[u8; (NUM_BLOCKS * BLOCK_SIZE) as usize]> = StaticCell::new();
         let piece_size = piece_size_for(index, piece_length, file_size);
         let num_blocks = piece_size.div_ceil(BLOCK_SIZE);
@@ -43,24 +43,20 @@ impl PieceState {
         }
     }
 
-    #[inline]
-    pub fn get_piece_data(&self) -> &[u8] {
+    pub(super) fn get_piece_data(&self) -> &[u8] {
         &self.piece.as_slice()[..self.len_bytes as usize]
     }
 
     /// returns if all blocks for this piece have been received or the buffer for this piece is full
-    #[inline]
-    pub const fn should_write(&self) -> bool {
+    pub(super) const fn should_write(&self) -> bool {
         self.have.count_ones() == self.num_blocks || self.len_bytes == NUM_BLOCKS * BLOCK_SIZE
     }
 
-    #[inline]
-    pub const fn index(&self) -> u32 {
+    pub(super) const fn index(&self) -> u32 {
         self.index
     }
 
-    #[inline]
-    pub fn add_block(&mut self, begin: u32, block_data: &[u8]) {
+    pub(super) fn add_block(&mut self, begin: u32, block_data: &[u8]) {
         self.piece[self.len_bytes as usize..self.len_bytes as usize + block_data.len()]
             .copy_from_slice(block_data);
         // here we need the real begin offset to set the bitfield
@@ -69,7 +65,7 @@ impl PieceState {
     }
 
     /// returns the index, begin and length of the next block to request, or None if all blocks have been received
-    pub fn get_next_block_request(&self) -> Option<(u32, u32, u32)> {
+    pub(super) fn get_next_block_request(&self) -> Option<(u32, u32, u32)> {
         for block_index in 0..self.num_blocks {
             if self.have & (1u32 << block_index) == 0 {
                 // we don't have this block, request it
@@ -90,8 +86,7 @@ impl PieceState {
     /// Recomputes `piece_size` and `num_blocks` since the last piece may be smaller.
     ///
     /// Returns whether there are more pieces to request.
-    #[inline]
-    pub(crate) fn increment(&mut self) -> bool {
+    pub(super) fn increment(&mut self) -> bool {
         if !self.is_complete() {
             // the piece isn't finished yet, but the buffer is full
             self.len_bytes = 0;
@@ -110,20 +105,17 @@ impl PieceState {
     }
 
     //
-    #[inline]
     const fn is_complete(&self) -> bool {
         self.have.count_ones() == self.num_blocks
     }
 
     /// Resets the received state without changing the piece index.
-    #[inline]
     const fn reset(&mut self) {
         self.have = 0;
         self.len_bytes = 0;
     }
 }
 
-#[inline]
 const fn piece_size_for(index: u32, piece_length: u32, file_size: u32) -> u32 {
     let offset = index * piece_length;
     // workaround, since `min()` isn't const yet

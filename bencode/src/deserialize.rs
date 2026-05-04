@@ -7,12 +7,14 @@ pub struct BencodeParser<'a> {
 }
 
 impl<'a> BencodeParser<'a> {
-    pub fn new(input: &'a [u8]) -> Self {
+    #[inline]
+    pub const fn new(input: &'a [u8]) -> Self {
         Self { input }
     }
 
     /// Peek at the next byte without consuming it
-    pub fn peek(&self) -> Option<u8> {
+    #[inline]
+    pub const fn peek(&self) -> Option<u8> {
         self.input.first().copied()
     }
 
@@ -46,6 +48,7 @@ impl<'a> BencodeParser<'a> {
     }
 
     /// Consume a length-prefixed byte string: "4:spam" -> "spam" and utf-8 decode it
+    #[inline]
     pub fn parse_str(&mut self) -> Result<&'a str> {
         let s_bytes = self.parse_bytes()?;
         let s = str::from_utf8(s_bytes).map_err(Error::InvalidUtf8)?;
@@ -144,7 +147,8 @@ impl<'a> BencodeParser<'a> {
     }
 
     /// Drops the parser and returns the remaining bytes.
-    pub fn remaining(self) -> &'a [u8] {
+    #[inline]
+    pub const fn remaining(self) -> &'a [u8] {
         self.input
     }
 }

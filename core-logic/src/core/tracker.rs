@@ -27,7 +27,8 @@ pub struct TrackerRequest<'a> {
 }
 
 impl<'a> TrackerRequest<'a> {
-    pub fn new(info_hash: &'a InfoHash, peer_id: &'a PeerId, port: u16, left: u32) -> Self {
+    #[inline]
+    pub const fn new(info_hash: &'a InfoHash, peer_id: &'a PeerId, port: u16, left: u32) -> Self {
         Self {
             info_hash,
             peer_id,

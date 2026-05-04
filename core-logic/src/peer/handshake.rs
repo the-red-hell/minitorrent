@@ -14,7 +14,6 @@ where
 {
     /// Performs the BitTorrent handshake with the peer.
     /// Returns a new `Peer` instance in the `Handshaken` state if successful.
-    #[inline]
     pub(crate) async fn into_handshake_performed(
         mut self,
         info_hash: &InfoHash,
@@ -55,7 +54,6 @@ where
     }
 }
 
-#[inline]
 fn construct_handshake(info_hash: &InfoHash, peer_id: &[u8; 20]) -> [u8; 68] {
     let mut handshake_msg: [u8; 68] = [0; 68];
     let protocol_str = b"BitTorrent protocol";

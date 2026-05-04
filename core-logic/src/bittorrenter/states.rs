@@ -31,18 +31,23 @@ impl Downloading {
             _piece_hashes: metainfo.info.pieces.to_vec(),
         }
     }
-    pub fn get_info_hash(&self) -> &InfoHash {
+
+    #[inline]
+    pub const fn get_info_hash(&self) -> &InfoHash {
         &self.info_hash
     }
-    pub fn get_total_length(&self) -> u32 {
+
+    #[inline]
+    pub const fn get_total_length(&self) -> u32 {
         self.total_length
     }
 
-    pub fn get_name(&self) -> &ShortFileName {
+    #[inline]
+    pub const fn get_name(&self) -> &ShortFileName {
         &self.name
     }
 
-    pub(crate) fn get_piece_length(&self) -> u32 {
+    pub(crate) const fn get_piece_length(&self) -> u32 {
         self.piece_length
     }
 

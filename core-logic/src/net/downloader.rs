@@ -13,6 +13,7 @@ where
     NET: TcpConnector + Dns,
     V: VolumeMgr,
 {
+    #[inline]
     pub fn get_peers(&self) -> &[core::net::SocketAddrV4] {
         self.state.get_peers()
     }

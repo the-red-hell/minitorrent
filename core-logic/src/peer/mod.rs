@@ -45,8 +45,7 @@ where
         }
     }
 
-    // TODO: inline such methods & make them const if possible
-    pub(crate) fn connection(&mut self) -> &mut NET::Connection<'a> {
+    pub(crate) const fn connection(&mut self) -> &mut NET::Connection<'a> {
         &mut self.connection
     }
 }

@@ -18,7 +18,6 @@ pub(crate) struct BufReader<const CAP: usize> {
 }
 
 impl<const CAP: usize> BufReader<CAP> {
-    #[inline]
     pub(crate) const fn new() -> Self {
         Self {
             buf: [0; CAP],
@@ -26,17 +25,14 @@ impl<const CAP: usize> BufReader<CAP> {
         }
     }
 
-    #[inline]
     pub(crate) const fn len(&self) -> usize {
         self.len
     }
 
-    #[inline]
     pub(crate) const fn capacity(&self) -> usize {
         CAP
     }
 
-    #[inline]
     pub(crate) fn advance_n(&mut self, n: usize) {
         let remaining = self.capacity() - self.len();
         if n > remaining {
@@ -45,13 +41,11 @@ impl<const CAP: usize> BufReader<CAP> {
         self.len += n;
     }
 
-    #[inline]
     pub(crate) fn remaining_mut(&mut self) -> &mut [u8] {
         &mut self.buf[self.len..]
     }
 
     /// sets the length back to 0 to be written to again, does not clear the buffer
-    #[inline]
     pub(crate) const fn reset(&mut self) {
         self.len = 0;
     }
