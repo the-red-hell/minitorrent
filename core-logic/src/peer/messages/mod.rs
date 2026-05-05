@@ -1,7 +1,6 @@
 //! Peer message definitions and related traits.
 
 pub(crate) mod error;
-use heapless::Vec;
 
 use crate::peer::{buf_reader::BufReader, messages::error::MessageError};
 
@@ -60,11 +59,11 @@ impl<'a> PeerMessage<'a> {
         }
     }
 
-    /// we will mostly send 17 bytes, only for the piece, more is required
     /// note that piece messages are currently not supported, let's see how we'll handle them
-    /// TODO: piece messages & bitfield
-    pub(crate) fn as_bittorrent_bytes(&self) -> Vec<u8, 17> {
-        let mut bytes = Vec::<u8, 17>::new();
+    /// TODO: piece messages
+    pub(crate) fn as_bittorrent_bytes(&self) -> alloc::vec::Vec<u8> {
+        // we will mostly send 17 bytes, only for the piece, more is required
+        let mut bytes = alloc::vec::Vec::with_capacity(17);
 
         // --- message length
         let length: u32 = match self {
@@ -74,16 +73,21 @@ impl<'a> PeerMessage<'a> {
             | PeerMessage::Interested
             | PeerMessage::NotInterested => 1,
             PeerMessage::Have(_) => 5,
-            PeerMessage::BitField(_bitfield) => unimplemented!(),
+            PeerMessage::BitField(bitfield) => {
+                let bitfield_len = bitfield.len().div_ceil(8);
+                // reserve needed bytes for bitfield payload
+                bytes.reserve(bitfield_len - bytes.len());
+                bitfield_len as u32 + 1 // +1 for the message type
+            }
             PeerMessage::Request { .. } | PeerMessage::Cancel { .. } => 13,
             PeerMessage::Piece { .. } => unimplemented!("Piece messages are not supported yet"), // + 7
         };
 
-        bytes.extend_from_slice(&length.to_be_bytes()).unwrap();
+        bytes.extend_from_slice(&length.to_be_bytes());
 
         // --- message type
         if let Some(message_type) = self.get_type() {
-            bytes.push(message_type).expect("it's 13 bytes");
+            bytes.push(message_type);
         } else {
             // KeepAlive message has no type and no payload, so we return an empty byte vector
             return bytes;
@@ -97,28 +101,39 @@ impl<'a> PeerMessage<'a> {
             | PeerMessage::NotInterested
             | PeerMessage::KeepAlive => {}
             PeerMessage::Have(piece_index) => {
-                bytes.extend_from_slice(&piece_index.to_be_bytes()).unwrap();
+                bytes.extend_from_slice(&piece_index.to_be_bytes());
             }
-            PeerMessage::BitField(_bitfield) => {
-                todo!("Bitfield message serialization not implemented yet");
+            PeerMessage::BitField(bitfield) => {
+                bitfield
+                    .chunks(8)
+                    .map(|chunk| {
+                        let mut byte = 0u8;
+                        for (i, &have) in chunk.iter().enumerate() {
+                            if have {
+                                byte |= 128 >> i;
+                            }
+                        }
+                        byte
+                    })
+                    .for_each(|byte| bytes.push(byte));
             }
             PeerMessage::Request {
                 index,
                 begin,
                 length,
             } => {
-                bytes.extend_from_slice(&index.to_be_bytes()).unwrap();
-                bytes.extend_from_slice(&begin.to_be_bytes()).unwrap();
-                bytes.extend_from_slice(&length.to_be_bytes()).unwrap();
+                bytes.extend_from_slice(&index.to_be_bytes());
+                bytes.extend_from_slice(&begin.to_be_bytes());
+                bytes.extend_from_slice(&length.to_be_bytes());
             }
             PeerMessage::Cancel {
                 index,
                 begin,
                 length,
             } => {
-                bytes.extend_from_slice(&index.to_be_bytes()).unwrap();
-                bytes.extend_from_slice(&begin.to_be_bytes()).unwrap();
-                bytes.extend_from_slice(&length.to_be_bytes()).unwrap();
+                bytes.extend_from_slice(&index.to_be_bytes());
+                bytes.extend_from_slice(&begin.to_be_bytes());
+                bytes.extend_from_slice(&length.to_be_bytes());
             }
             PeerMessage::Piece { .. } => unimplemented!("Piece messages are not supported yet"),
         }
@@ -356,22 +371,24 @@ mod tests {
             true, false, true, true, false, true, true, true, false, false, false, false, false,
             false, false, false,
         ];
+        let expected_bitfield_bytes = vec![0b10110111, 0];
         buf.remaining_mut()[..4].copy_from_slice(2u32.to_be_bytes().as_slice());
         buf.remaining_mut()[4] = PeerMessageTypes::Bitfield as u8;
-        buf.remaining_mut()[5..7].copy_from_slice(&[0b10110111, 0]);
+        buf.remaining_mut()[5..7].copy_from_slice(&expected_bitfield_bytes);
         buf.advance_n(7);
 
         let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
 
         assert!(matches!(msg, PeerMessage::BitField(recv_have) if recv_have == have));
-        // assert_eq!(
-        //     msg.as_bittorrent_bytes().as_slice(),
-        //     [
-        //         &[0, 0, 0, 5, PeerMessageTypes::Have as u8][..],
-        //         &piece_index
-        //     ]
-        //     .concat()
-        // );
+
+        assert_eq!(
+            PeerMessage::BitField(have).as_bittorrent_bytes(),
+            [
+                &[0, 0, 0, 3, PeerMessageTypes::Bitfield as u8][..],
+                &expected_bitfield_bytes
+            ]
+            .concat()
+        );
     }
 
     #[test]
