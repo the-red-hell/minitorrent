@@ -15,3 +15,5 @@ pub use hash::Sha1Hasher;
 pub use net::tcp::TcpConnector;
 pub use peer::BLOCK_SIZE;
 pub use peer::messages::error::MessageError;
+
+pub const DEFAULT_TRACKER: &str = "http://tracker.opentrackr.org:1337/announce";

@@ -1,4 +1,4 @@
-use crate::core::InfoHash;
+use crate::{DEFAULT_TRACKER, core::InfoHash};
 use bencode::{BencodeParser, Error, Result};
 
 #[derive(PartialEq)]
@@ -53,7 +53,7 @@ impl<'a> MetaInfoFile<'a> {
         }
 
         Ok(MetaInfoFile {
-            announce: announce.ok_or(Error::UnknownField)?,
+            announce: announce.unwrap_or(DEFAULT_TRACKER),
             info: info.ok_or(Error::UnknownField)?,
             info_hash,
         })

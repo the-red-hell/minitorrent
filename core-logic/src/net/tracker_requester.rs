@@ -22,6 +22,7 @@ where
         metainfo: &MetaInfoFile<'_>,
         rx_buf: &mut [u8],
     ) -> Result<BitTorrenter<NET, V, Downloading, RX, TX>, BitTorrenterError<NET, V>> {
+        // defmt and log handle hex formatting differently
         #[cfg(feature = "defmt")]
         defmt::trace!(
             "Requesting tracker with info_hash: {:x}",
@@ -64,12 +65,13 @@ where
     ///
     /// The number of bytes written to `rx_buf` (the response body only,
     /// HTTP headers are stripped).
-    pub async fn make_tracker_request(
+    async fn make_tracker_request(
         &mut self,
         metadata: &MetaInfoFile<'_>,
         rx_buf: &mut [u8],
     ) -> Result<usize, BitTorrenterError<NET, V>> {
-        let mut url = SimpleUrl::parse(metadata.announce).expect("Could not parse URL");
+        let mut url = SimpleUrl::parse(metadata.announce)
+            .unwrap_or_else(|_| SimpleUrl::parse(DEFAULT_TRACKER).expect("Valid hardcoded url"));
         let tracker_request = TrackerRequest::new(
             &metadata.info_hash,
             &self.peer_id,
