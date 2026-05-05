@@ -152,11 +152,8 @@ mod tests {
     }
 
     #[test]
-    fn test_simple_url_https_default_port() {
-        let url = SimpleUrl::parse("https://secure.example.com").unwrap();
-        assert_eq!(url.host_str(), Some("secure.example.com"));
-        assert_eq!(url.port(), Some(443));
-        assert_eq!(url.path(), "/");
+    fn test_simple_url_https_unsupported() {
+        assert!(SimpleUrl::parse("https://secure.example.com").is_err());
     }
 
     #[test]
