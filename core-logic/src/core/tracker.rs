@@ -57,6 +57,7 @@ impl<'a> TrackerRequest<'a> {
 #[defmt_or_log::derive_format_or_debug]
 pub struct TrackerResponse {
     pub interval: u32,
+    #[cfg_attr(feature = "defmt", defmt(Debug2Format))]
     pub peers: Vec<core::net::SocketAddrV4, 10>,
 }
 
