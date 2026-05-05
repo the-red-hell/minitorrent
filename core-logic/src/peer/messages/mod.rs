@@ -25,8 +25,8 @@ pub enum PeerMessage<'a> {
     Unchoke,
     Interested,
     NotInterested,
-    Have(u32),                // piece index
-    _BitField(Vec<bool, 64>), // bitfield data
+    Have(u32),                       // piece index
+    BitField(alloc::vec::Vec<bool>), // bitfield data
     Request {
         index: u32,
         begin: u32,
@@ -52,7 +52,7 @@ impl<'a> PeerMessage<'a> {
             PeerMessage::Interested => Some(PeerMessageTypes::Interested as u8),
             PeerMessage::NotInterested => Some(PeerMessageTypes::NotInterested as u8),
             PeerMessage::Have(_) => Some(PeerMessageTypes::Have as u8),
-            PeerMessage::_BitField(_) => Some(PeerMessageTypes::Bitfield as u8),
+            PeerMessage::BitField(_) => Some(PeerMessageTypes::Bitfield as u8),
             PeerMessage::Request { .. } => Some(PeerMessageTypes::Request as u8),
             PeerMessage::Piece { .. } => Some(PeerMessageTypes::Piece as u8),
             PeerMessage::Cancel { .. } => Some(PeerMessageTypes::Cancel as u8),
@@ -74,7 +74,7 @@ impl<'a> PeerMessage<'a> {
             | PeerMessage::Interested
             | PeerMessage::NotInterested => 1,
             PeerMessage::Have(_) => 5,
-            PeerMessage::_BitField(_bitfield) => unimplemented!(),
+            PeerMessage::BitField(_bitfield) => unimplemented!(),
             PeerMessage::Request { .. } | PeerMessage::Cancel { .. } => 13,
             PeerMessage::Piece { .. } => unimplemented!("Piece messages are not supported yet"), // + 7
         };
@@ -99,7 +99,7 @@ impl<'a> PeerMessage<'a> {
             PeerMessage::Have(piece_index) => {
                 bytes.extend_from_slice(&piece_index.to_be_bytes()).unwrap();
             }
-            PeerMessage::_BitField(_bitfield) => {
+            PeerMessage::BitField(_bitfield) => {
                 todo!("Bitfield message serialization not implemented yet");
             }
             PeerMessage::Request {
@@ -145,7 +145,7 @@ impl<'a> PeerMessage<'a> {
             return Ok(None); // Not enough data for the full message
         }
 
-        match data[4] {
+        match payload[0] {
             b if len == 1 && b == PeerMessageTypes::Choke as u8 => Ok(Some(PeerMessage::Choke)),
             b if len == 1 && b == PeerMessageTypes::Unchoke as u8 => Ok(Some(PeerMessage::Unchoke)),
             b if len == 1 && b == PeerMessageTypes::Interested as u8 => {
@@ -172,13 +172,18 @@ const fn parse_have_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>
     Ok(Some(PeerMessage::Have(piece_index)))
 }
 
-const fn parse_bitfield_message<'a>(
-    _data: &'a [u8],
-) -> Result<Option<PeerMessage<'a>>, MessageError> {
-    // TODO: todo!("Bitfield message parsing not implemented yet");
-    Err(MessageError::UnknownMessageType(
-        PeerMessageTypes::Bitfield as u8,
-    ))
+fn parse_bitfield_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
+    let mut have = alloc::vec::Vec::from_iter(::core::iter::repeat_n(false, (data.len() - 1) * 8));
+
+    for (byte_i, &byte) in data[1..].iter().enumerate() {
+        for bit_i in 0..8 {
+            let byte_offset = 128 >> bit_i;
+            let do_we_have = (byte & byte_offset) == byte_offset;
+            have[byte_i * 8 + bit_i] = do_we_have;
+        }
+    }
+
+    Ok(Some(PeerMessage::BitField(have)))
 }
 
 fn parse_request_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
@@ -342,6 +347,31 @@ mod tests {
             ]
             .concat()
         );
+    }
+
+    #[test]
+    fn test_bitfield_message() {
+        let mut buf = BufReader::<10>::new();
+        let have = vec![
+            true, false, true, true, false, true, true, true, false, false, false, false, false,
+            false, false, false,
+        ];
+        buf.remaining_mut()[..4].copy_from_slice(2u32.to_be_bytes().as_slice());
+        buf.remaining_mut()[4] = PeerMessageTypes::Bitfield as u8;
+        buf.remaining_mut()[5..7].copy_from_slice(&[0b10110111, 0]);
+        buf.advance_n(7);
+
+        let msg = PeerMessage::from_bytes(&mut buf).unwrap().unwrap();
+
+        assert!(matches!(msg, PeerMessage::BitField(recv_have) if recv_have == have));
+        // assert_eq!(
+        //     msg.as_bittorrent_bytes().as_slice(),
+        //     [
+        //         &[0, 0, 0, 5, PeerMessageTypes::Have as u8][..],
+        //         &piece_index
+        //     ]
+        //     .concat()
+        // );
     }
 
     #[test]
