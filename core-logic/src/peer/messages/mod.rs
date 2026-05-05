@@ -25,8 +25,8 @@ pub enum PeerMessage<'a> {
     Unchoke,
     Interested,
     NotInterested,
-    Have(u32),                       // piece index
-    BitField(alloc::vec::Vec<bool>), // bitfield data
+    Have(u32), // piece index
+    BitField(#[cfg_attr(feature = "defmt", defmt(Debug2Format))] alloc::vec::Vec<bool>), // bitfield data
     Request {
         index: u32,
         begin: u32,
