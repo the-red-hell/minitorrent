@@ -388,19 +388,19 @@ mod tests {
     #[test]
     fn test_skip_any_empty_input() {
         let mut parser = BencodeParser::new(b"");
-        assert!(matches!(parser.skip_any(), Err(Error::InvalidSyntax)));
+        assert!(matches!(parser.skip_any(), Err(Error::UnexpectedEof)));
     }
 
     #[test]
     fn test_skip_any_list_missing_end() {
         let mut parser = BencodeParser::new(b"li42e");
-        assert!(matches!(parser.skip_any(), Err(Error::InvalidSyntax)));
+        assert!(matches!(parser.skip_any(), Err(Error::UnexpectedEof)));
     }
 
     #[test]
     fn test_skip_any_dict_missing_end() {
         let mut parser = BencodeParser::new(b"d3:key5:value");
-        assert!(matches!(parser.skip_any(), Err(Error::InvalidSyntax)));
+        assert!(matches!(parser.skip_any(), Err(Error::UnexpectedEof)));
     }
 
     #[test]
@@ -519,13 +519,13 @@ mod tests {
     #[test]
     fn test_nested_structure_errors() {
         let mut parser = BencodeParser::new(b"lli42e");
-        assert!(matches!(parser.skip_any(), Err(Error::InvalidSyntax)));
+        assert!(matches!(parser.skip_any(), Err(Error::UnexpectedEof)));
     }
 
     #[test]
     fn test_dict_nested_error() {
         let mut parser = BencodeParser::new(b"d3:keyd3:foo");
-        assert!(matches!(parser.skip_any(), Err(Error::InvalidSyntax)));
+        assert!(matches!(parser.skip_any(), Err(Error::UnexpectedEof)));
     }
 
     #[test]
