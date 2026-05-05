@@ -16,6 +16,9 @@ impl<'a> SimpleUrl<'a> {
     pub fn parse(url: &'a str) -> Result<Self, &'static str> {
         // Parse scheme (e.g., "http://")
         let (scheme, rest) = url.split_once("://").ok_or("Invalid URL: missing scheme")?;
+        if scheme == "https" {
+            return Err("HTTPS is not supported in this simple URL parser");
+        }
 
         // Parse host and optional port
         let (host_port, path_query) = if let Some(pos) = rest.find('/') {

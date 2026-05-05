@@ -14,6 +14,7 @@ embedded-io-async = { version = "0.7.0" }
 defmt-or-log = { version = "0.2.3" }
 log = { version = "0.4.29", optional = true }
 static_cell = "2.1.1"
+embassy-time = { version = "0.5.1", default-features = false }
 
 [dev-dependencies]
 chrono = "0.4"
@@ -24,7 +25,8 @@ hex = "0.4.3"
 reqwest = "0.13.1"
 embedded-io = "0.7.1"
 env_logger = "0.11"
+embassy-time = { version = "0.5.1", features = ["std", "generic-queue-8"] }
 
 [features]
-defmt = ["defmt-or-log/defmt", "embedded-io-async/defmt", "bencode/defmt", "heapless/defmt", "embedded-sdmmc/defmt-log", "dep:defmt"]
-log = ["defmt-or-log/log", "bencode/log", "dep:log"]
+defmt = ["defmt-or-log/defmt", "embedded-io-async/defmt", "bencode/defmt", "heapless/defmt", "embedded-sdmmc/defmt-log", "dep:defmt", "embassy-time/defmt"]
+log = ["defmt-or-log/log", "bencode/log", "dep:log", "embassy-time/log"]

@@ -1,3 +1,4 @@
+use embassy_time::Duration;
 use embedded_nal_async::Dns;
 
 use crate::{
@@ -20,14 +21,17 @@ where
 
     pub async fn download(&mut self) -> Result<(), BitTorrenterError<NET, V>> {
         defmt_or_log::info!("Starting download...");
-        let peer = connect_to_peer(
+
+        let peer = connect_to_valid_peer(
             &mut self.net,
             &mut self.socket_buffers,
-            self.state.get_peers()[2],
+            self.state.get_peers(),
             self.state.get_piece_length(),
             self.state.get_total_length(),
         )
-        .await?;
+        .await?
+        .expect("// TODO: no valid peers found");
+
         defmt_or_log::info!("Connected to peer, performing handshake...");
 
         let mut handshake_peer = peer
@@ -67,24 +71,48 @@ where
     }
 }
 
-async fn connect_to_peer<'a, NET, V, const RX: usize, const TX: usize>(
+/// tries to connect to the first peer in a list that responds within a timeout
+async fn connect_to_valid_peer<'a, NET, V, const RX: usize, const TX: usize>(
     net: &'a mut NET,
     socket_buffers: &'a mut SocketBuffers<RX, TX>,
-    peer_addr: core::net::SocketAddrV4,
+    peer_list: &[core::net::SocketAddrV4],
     piece_length: u32,
     file_size: u32,
-) -> Result<Peer<'a, NET, NotHandshaken>, BitTorrenterError<NET, V>>
+) -> Result<Option<Peer<'a, NET, NotHandshaken>>, BitTorrenterError<NET, V>>
 where
     NET: TcpConnector + Dns,
     V: VolumeMgr,
 {
-    defmt_or_log::info!("Connecting to peer at: {:?}", peer_addr);
+    for peer_addr in peer_list {
+        defmt_or_log::info!("Connecting to peer at: {:?}", peer_addr);
 
-    let conn = net
-        .connect(peer_addr, &mut socket_buffers.rx, &mut socket_buffers.tx)
-        .await
-        .map_err(BitTorrenterError::TcpError)?;
+        // SAFETY: On failure paths, the connection (and its borrows) is dropped
+        // before the next iteration. On success, we return immediately.
+        // The async borrow checker is overly conservative in loops (#63768).
+        let (net_ref, rx_ref, tx_ref) = unsafe {
+            let net_ref = &mut *(net as *mut NET);
+            let rx_ref = &mut *(&mut socket_buffers.rx as *mut [u8; RX] as *mut [u8]);
+            let tx_ref = &mut *(&mut socket_buffers.tx as *mut [u8; TX] as *mut [u8]);
+            (net_ref, rx_ref, tx_ref)
+        };
 
-    defmt_or_log::info!("Connected to peer at: {:?}", peer_addr);
-    Ok(Peer::new(conn, piece_length, file_size))
+        let conn = embassy_time::with_timeout(
+            Duration::from_secs(20),
+            net_ref.connect(*peer_addr, rx_ref, tx_ref),
+        )
+        .await;
+
+        match conn {
+            Ok(Ok(c)) => {
+                defmt_or_log::info!("Connected to peer at: {:?}", peer_addr);
+                return Ok(Some(Peer::new(c, piece_length, file_size)));
+            }
+            Ok(Err(_)) => continue,
+            Err(_) => {
+                defmt_or_log::warn!("Connection to peer timed out");
+                continue;
+            }
+        }
+    }
+    Ok(None)
 }

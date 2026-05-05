@@ -100,10 +100,11 @@ impl<'a> BencodeParser<'a> {
     /// Crucial: Skips the next element (int, string, list, or dict)
     /// Needed when the input has fields your struct doesn't need.
     pub fn skip_any(&mut self) -> Result<()> {
-        match self.peek() {
-            Some(b'i') => self.parse_int().map(|_| ()),
-            Some(b'0'..=b'9') => self.parse_bytes().map(|_| ()),
-            Some(b'l') => {
+        let next = self.peek().ok_or(Error::UnexpectedEof)?;
+        match next {
+            b'i' => self.parse_int().map(|_| ()),
+            b'0'..=b'9' => self.parse_bytes().map(|_| ()),
+            b'l' => {
                 self.input = &self.input[1..]; // skip 'l'
                 // skip until 'e'
                 while self.peek() != Some(b'e') {
@@ -112,7 +113,7 @@ impl<'a> BencodeParser<'a> {
                 self.input = &self.input[1..]; // skip 'e'
                 Ok(())
             }
-            Some(b'd') => {
+            b'd' => {
                 self.input = &self.input[1..]; // skip 'd'
                 // skip until 'e'
                 while self.peek() != Some(b'e') {
