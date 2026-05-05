@@ -5,7 +5,7 @@ use embedded_nal_async::Dns;
 use heapless::string::String;
 
 use crate::{
-    BitTorrenter, BitTorrenterError, MetaInfoFile, TcpConnector,
+    BitTorrenter, BitTorrenterError, DEFAULT_TRACKER, MetaInfoFile, TcpConnector,
     bittorrenter::states::{Downloading, RequestingTracker},
     core::tracker::{TrackerRequest, TrackerResponse},
     fs::VolumeMgr,
