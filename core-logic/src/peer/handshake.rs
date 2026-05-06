@@ -5,7 +5,7 @@ use embedded_io_async::{Read, Write};
 use crate::{
     TcpConnector,
     core::InfoHash,
-    peer::{Handshaken, NotHandshaken, PEER_ID, Peer},
+    peer::{Handshaken, NotHandshaken, PEER_ID, Peer, messages::PeerMessage},
 };
 
 impl<'a, NET> Peer<'a, NET, NotHandshaken>
@@ -43,7 +43,16 @@ where
 
         defmt_or_log::info!("Handshake successful with peer");
 
-        // TODO: send bitfield?
+        let bitfield = PeerMessage::BitField(alloc::vec![false; self.piece.num_pieces() as usize]);
+        let bitfield_bytes = bitfield.as_bittorrent_bytes();
+        self.connection()
+            .write_all(&bitfield_bytes)
+            .await
+            .map_err(HandshakeError::WriteFailed)?;
+        self.connection()
+            .flush()
+            .await
+            .map_err(HandshakeError::WriteFailed)?;
 
         Ok(Peer {
             connection: self.connection,
