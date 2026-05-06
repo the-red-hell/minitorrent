@@ -104,6 +104,10 @@ impl PieceState {
         true
     }
 
+    pub(super) const fn num_pieces(&self) -> u32 {
+        self.file_size.div_ceil(self.piece_length)
+    }
+
     //
     const fn is_complete(&self) -> bool {
         self.have.count_ones() == self.num_blocks
