@@ -141,7 +141,6 @@ impl<'a> PeerMessage<'a> {
         bytes
     }
 
-    // TODO
     pub(crate) fn from_bytes<const CAP: usize>(
         data: &'a mut BufReader<CAP>,
     ) -> Result<Option<Self>, MessageError> {
@@ -201,14 +200,16 @@ fn parse_bitfield_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>,
     Ok(Some(PeerMessage::BitField(have)))
 }
 
-fn parse_request_message<'a>(data: &'a [u8]) -> Result<Option<PeerMessage<'a>>, MessageError> {
+const fn parse_request_message<'a>(
+    data: &'a [u8],
+) -> Result<Option<PeerMessage<'a>>, MessageError> {
     if data.len() < 13 {
         return Err(MessageError::InvalidLength);
     }
 
-    let index = u32::from_be_bytes(data[1..=4].try_into().unwrap());
-    let begin = u32::from_be_bytes(data[5..=8].try_into().unwrap());
-    let length = u32::from_be_bytes(data[9..=12].try_into().unwrap());
+    let index = u32::from_be_bytes([data[1], data[2], data[3], data[4]]);
+    let begin = u32::from_be_bytes([data[5], data[6], data[7], data[8]]);
+    let length = u32::from_be_bytes([data[9], data[10], data[11], data[12]]);
 
     Ok(Some(PeerMessage::Request {
         index,
