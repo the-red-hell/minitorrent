@@ -10,8 +10,13 @@ mod wifi_helper;
 async fn integration_test() {
     env_logger::init();
     let mut bittorrenter = init_bittorrenter();
-    let torrent = bittorrenter.fs().get_torrent_from_file().await.unwrap();
-    let metadata = MetaInfoFile::parse(&torrent).unwrap();
+    let mut buf = [0u8; 1024 * 10];
+    let file_length = bittorrenter
+        .fs()
+        .put_torrent_into_buf(&mut buf)
+        .await
+        .unwrap();
+    let metadata = MetaInfoFile::parse(&buf[..file_length]).unwrap();
 
     assert_eq!(
         metadata.announce,
