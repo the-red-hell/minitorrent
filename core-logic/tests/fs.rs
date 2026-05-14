@@ -12,9 +12,10 @@ mod fs_helper;
 #[tokio::test]
 async fn test_retrieve_torrent() {
     let mut fs_duple = init_fs_duple();
-    let torrent = fs_duple.get_torrent_from_file().await;
+    let mut buf = [0u8; 1024 * 10];
+    let file_length = fs_duple.put_torrent_into_buf(&mut buf).await;
 
-    assert_eq!(torrent.unwrap().as_slice(), TORRENT_STRING);
+    assert_eq!(&buf[..file_length.unwrap()], TORRENT_STRING);
 }
 
 #[tokio::test]

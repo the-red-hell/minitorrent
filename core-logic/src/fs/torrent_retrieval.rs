@@ -1,4 +1,4 @@
-use alloc::{string::ToString as _, vec, vec::Vec};
+use alloc::string::ToString as _;
 use embedded_sdmmc::LfnBuffer;
 
 use crate::fs::{FileSystem, FileSystemExt, VolumeMgr};
@@ -9,7 +9,8 @@ where
 {
     /// Get's the first torrent file in the 'torrents' directory.
     /// Make sure to put the torrent file in the 'torrents' directory as well as have the directory in the root of the filesystem.
-    pub async fn get_torrent_from_file(&mut self) -> Option<Vec<u8>> {
+    /// Returns the length of the torrent file.
+    pub async fn put_torrent_into_buf(&mut self, buf: &mut [u8]) -> Option<usize> {
         self.go_to_root_dir();
         self.open_dir("torrents")
             .expect("'torrents' directory not found.");
@@ -38,14 +39,15 @@ where
             let file_length = self
                 .volume_mgr
                 .file_length(self.get_open_file().expect("we just opened it"))
-                .unwrap();
-            let mut buf = vec![0u8; file_length as usize];
+                .unwrap() as usize;
+            if file_length > buf.len() {
+                defmt_or_log::error!("Torrent file is too big. Max size is {}", buf.len());
+                return None;
+            }
 
-            self.read_to_end(&mut buf)
-                .await
-                .expect("Couldn't read file");
+            self.read_to_end(buf).await.expect("Couldn't read file");
             defmt_or_log::info!("Using torrent-file {}", file_name.to_string().as_str());
-            Some(buf)
+            Some(file_length)
         } else {
             None
         }

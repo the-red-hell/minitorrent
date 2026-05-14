@@ -23,11 +23,17 @@ async fn main(spawner: Spawner) -> ! {
 
     let mut bittorrenter = esp_app::setup::setup(spawner).await;
 
-    let file = bittorrenter.fs().get_torrent_from_file().await.unwrap();
-    let file = file.as_slice();
-    info!("WE GOT THE FILE WITH: {:?}", file);
+    let mut buf = [0u8; 1024 * 10];
+    let file_length = bittorrenter
+        .fs()
+        .put_torrent_into_buf(&mut buf)
+        .await
+        .unwrap();
+    info!("WE GOT THE FILE WITH LENGTH: {:?}", file_length);
 
-    let torrent = defmt::unwrap!(core_logic::core::metainfo::MetaInfoFile::parse(file));
+    let torrent = defmt::unwrap!(core_logic::core::metainfo::MetaInfoFile::parse(
+        &buf[..file_length]
+    ));
 
     info!("WE GOT THE TORRENT WITH: {:?}", torrent);
 
