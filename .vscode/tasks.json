@@ -1,17 +1,13 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "cargo",
-			"command": "clippy",
-			"args": [
-				"-p", "core-logic", "--features", "log", "--release"
-			],
-			"problemMatcher": [
-				"$rustc"
-			],
-			"group": "build",
-			"label": "rust: cargo clippy core-logic release"
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "cargo",
+      "command": "clippy",
+      "args": ["-p", "core-logic", "--features", "defmt", "--release"],
+      "problemMatcher": ["$rustc"],
+      "group": "build",
+      "label": "rust: cargo clippy core-logic release"
+    }
+  ]
 }

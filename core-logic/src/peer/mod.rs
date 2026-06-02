@@ -2,10 +2,10 @@ use ::core::marker::PhantomData;
 
 use crate::{TcpConnector, core::PeerId, peer::piece_state::PieceState};
 pub(super) mod buf_reader;
+pub mod downloader_processer;
 pub mod handshake;
 pub(crate) mod messages;
 mod piece_state;
-pub mod process;
 
 pub const BLOCK_SIZE: u32 = 16 * 1024; // 16KB
 const PEER_ID: PeerId = *b"AwesomeESP32C3Client";
@@ -16,7 +16,7 @@ const PEER_ID: PeerId = *b"AwesomeESP32C3Client";
 ///     NotHandshaken -> Handshaken (via peer.into_handshake_performed())
 ///     Choked <-> Unchoked
 ///     Interested <-> NotInterested
-///     
+///
 /// ```ignore
 /// // Create a new peer connection, the tcp-connection comes from the `BitTorrenter`
 /// let peer = Peer::new(tcp_connection); // NotHandshaken, Choked, NotInterested

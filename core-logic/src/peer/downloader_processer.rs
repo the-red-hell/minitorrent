@@ -13,7 +13,7 @@ where
     /// main entry
     /// - reads data
     /// - parses & handles messages
-    pub(crate) async fn process_incoming_data(
+    pub(crate) async fn download_process_incoming_data(
         &mut self,
         fs: &mut FileSystem<impl VolumeMgr>,
     ) -> Result<(), NET::Error> {

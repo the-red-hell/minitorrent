@@ -25,7 +25,7 @@ where
         let peer = connect_to_valid_peer(
             &mut self.net,
             &mut self.socket_buffers,
-            self.state.get_peers(),
+            &self.state.get_peers()[0..],
             self.state.get_piece_length(),
             self.state.get_total_length(),
         )
@@ -47,7 +47,7 @@ where
             .map_err(BitTorrenterError::FsError)?;
 
         handshake_peer
-            .process_incoming_data(&mut self.fs)
+            .download_process_incoming_data(&mut self.fs)
             .await
             .map_err(BitTorrenterError::TcpError)?;
 
@@ -109,6 +109,7 @@ where
             }
             Ok(Err(_)) => continue,
             Err(_) => {
+                drop(conn);
                 defmt_or_log::warn!("Connection to peer timed out");
                 continue;
             }
