@@ -1,6 +1,6 @@
 # Your BitTorrent-Client for embedded systems
 
-After implementing a simple [BitTorrent-Client using Rust with standard library](https://github.com/paulhkz/bittorrent-rust.git), I still had an ESP32C3 laying around.
+After implementing a simple [BitTorrent-Client using Rust with standard library](https://github.com/p4xxus/bittorrent-rust.git), I still had an ESP32C3 laying around.
 So the next logical thing to do is: implementing a BitTorrent-Client on that thing.
 
 ## Hardware-Stack
